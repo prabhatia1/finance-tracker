@@ -46,9 +46,12 @@ app.secret_key = os.urandom(24).hex()
 
 # ─── Sync Excel on Startup ────────────────────────────────────────────────────
 _excel_mtime = 0
-init_excel()  # Create fresh Excel if missing, sync if exists
-smart_sync()
-_excel_mtime = EXCEL_PATH.stat().st_mtime
+try:
+    init_excel()  # Create fresh Excel if missing, sync if exists
+    smart_sync()
+    _excel_mtime = EXCEL_PATH.stat().st_mtime
+except Exception as _e:
+    print(f"⚠️ Startup sync skipped (first run on new DB?): {_e}")
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
