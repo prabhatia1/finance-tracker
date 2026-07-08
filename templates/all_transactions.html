@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h4 class="mb-0" style="font-size:1.1rem"><i class="bi bi-list-ul text-blue"></i> All Transactions</h4>
+    <small class="text-secondary-custom">{{ total }} transaction{% if total != 1 %}s{% endif %}</small>
+</div>
+
+<!-- Filter Card -->
+<div class="card mb-3" id="filter-card">
+    <div class="card-body py-2">
+        <form method="GET" action="/transactions" id="filter-form" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small mb-0">Search</label>
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Search..." value="{{ filter_search }}" id="search-input">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-0">Category</label>
+                <select name="category" class="form-select form-select-sm filter-select">
+                    <option value="">All</option>
+                    {% for c in categories %}
+                    <option value="{{ c.name }}" {% if filter_cat == c.name %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-0">Card</label>
+                <select name="card_id" class="form-select form-select-sm filter-select">
+                    <option value="">All</option>
+                    {% for c in cards %}
+                    <option value="{{ c.id }}" {% if filter_card == c.id %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-0">Type</label>
+                <select name="txn_type" class="form-select form-select-sm filter-select">
+                    <option value="">All</option>
+                    <option value="debit" {% if filter_type == 'debit' %}selected{% endif %}>Expense</option>
+                    <option value="credit" {% if filter_type == 'credit' %}selected{% endif %}>Income</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-outline-light"><i class="bi bi-funnel"></i></button>
+                <a href="/transactions" class="btn btn-sm btn-outline-light">Clear</a>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label small mb-0">From</label>
+                <input type="date" name="from" class="form-control form-control-sm filter-date" value="{{ filter_from }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-0">To</label>
+                <input type="date" name="to" class="form-control form-control-sm filter-date" value="{{ filter_to }}">
+            </div>
+            <div class="col-md-8"></div>
+
+            <input type="hidden" name="sort" value="{{ sort_by }}">
+            <input type="hidden" name="dir" value="{{ sort_dir }}">
+        </form>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card" id="transactions-table">
+    {% include "_transactions_table.html" %}
+</div>
+
+<!-- Pagination -->
+<div id="transactions-pagination">
+    {% if pages > 1 %}
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <small class="text-secondary-custom">Page {{ page }} of {{ pages }} ({{ total }})</small>
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="/transactions?page={{ page - 1 }}&sort={{ sort_by }}&dir={{ sort_dir }}&category={{ filter_cat }}&card_id={{ filter_card }}&txn_type={{ filter_type }}&q={{ filter_search }}&from={{ filter_from }}&to={{ filter_to }}">&laquo;</a>
+                </li>
+                {% endif %}
+                {% for p in range(1, pages + 1) %}
+                {% if p == page %}
+                <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                {% elif p <= 3 or p > pages - 3 or (p >= page - 2 and p <= page + 2) %}
+                <li class="page-item">
+                    <a class="page-link" href="/transactions?page={{ p }}&sort={{ sort_by }}&dir={{ sort_dir }}&category={{ filter_cat }}&card_id={{ filter_card }}&txn_type={{ filter_type }}&q={{ filter_search }}&from={{ filter_from }}&to={{ filter_to }}">{{ p }}</a>
+                </li>
+                {% elif p == 4 or p == pages - 3 %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+                {% endfor %}
+                {% if page < pages %}
+                <li class="page-item">
+                    <a class="page-link" href="/transactions?page={{ page + 1 }}&sort={{ sort_by }}&dir={{ sort_dir }}&category={{ filter_cat }}&card_id={{ filter_card }}&txn_type={{ filter_type }}&q={{ filter_search }}&from={{ filter_from }}&to={{ filter_to }}">&raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    const form = document.getElementById('filter-form');
+    const tableContainer = document.getElementById('transactions-table');
+    const paginationContainer = document.getElementById('transactions-pagination');
+
+    function buildUrl(page) {
+        const params = new URLSearchParams();
+        params.set('ajax', '1');
+        const fd = new FormData(form);
+        for (let [k, v] of fd) { if (v) params.set(k, v); }
+        if (page) params.set('page', page);
+        return '/transactions?' + params.toString();
+    }
+
+    function refreshTable(page) {
+        fetch(buildUrl(page || null))
+            .then(r => r.json())
+            .then(data => {
+                tableContainer.innerHTML = data.table_html;
+                paginationContainer.innerHTML = data.pagination_html;
+                tableContainer.querySelectorAll('a[href*="transactions"]').forEach(a => {
+                    a.addEventListener('click', function(e) { e.preventDefault();
+                        const u = new URL(this.href, window.location.origin);
+                        refreshTable(u.searchParams.get('page') || 1);
+                    });
+                });
+                paginationContainer.querySelectorAll('a[href*="transactions"]').forEach(a => {
+                    a.addEventListener('click', function(e) { e.preventDefault();
+                        const u = new URL(this.href, window.location.origin);
+                        refreshTable(u.searchParams.get('page') || 1);
+                    });
+                });
+                const cleanUrl = buildUrl().replace('ajax=1&','').replace('?ajax=1','').replace('&ajax=1','');
+                window.history.replaceState({}, '', cleanUrl);
+            });
+    }
+
+    let timer;
+    document.getElementById('search-input').addEventListener('input', function() {
+        clearTimeout(timer);
+        timer = setTimeout(() => refreshTable(1), 300);
+    });
+    document.querySelectorAll('.filter-select, .filter-date').forEach(el => {
+        el.addEventListener('change', () => refreshTable(1));
+    });
+    form.addEventListener('submit', function(e) { e.preventDefault(); refreshTable(1); });
+})();
+</script>
+
+{% endblock %}

@@ -8,279 +8,334 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         :root {
-            --bg-dark: #0a0e1a;
-            --card-bg: #131a2e;
-            --card-border: #1e2740;
-            --accent-green: #00c853;
+            --bg-deep: #080c18;
+            --bg-surface: #0d1630;
+            --bg-card: #111b33;
+            --border-subtle: rgba(255,255,255,0.06);
+            --border-card: rgba(255,255,255,0.08);
+            --accent-green: #00e676;
             --accent-red: #ff5252;
             --accent-blue: #448aff;
-            --accent-orange: #ff9100;
-            --text-muted: #7b89a6;
-            --text-bright: #e8edf5;
+            --accent-orange: #ffab00;
+            --accent-purple: #b388ff;
+            --text-primary: #eef2f8;
+            --text-secondary: #8b9bb5;
         }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
         body {
-            background-color: var(--bg-dark);
-            color: var(--text-bright);
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            padding-bottom: 76px; /* room for bottom nav */
         }
-        .navbar {
-            background: linear-gradient(135deg, #0d1630 0%, #131a2e 100%) !important;
-            border-bottom: 1px solid var(--card-border);
-            padding: 0.75rem 0;
+        /* ── scrollbar ── */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-card); border-radius: 4px; }
+
+        /* ── top bar ── */
+        .top-bar {
+            background: linear-gradient(135deg, #0a0f1e 0%, #111b33 100%);
+            border-bottom: 1px solid var(--border-card);
+            padding: 0.65rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1010;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
-        .navbar-brand {
+        .top-bar .brand {
             font-weight: 700;
-            font-size: 1.3rem;
-            color: var(--accent-green) !important;
+            font-size: 1.15rem;
+            color: var(--accent-green);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
         }
-        .nav-link {
-            color: var(--text-muted) !important;
+        .top-bar .brand i { font-size: 1.3rem; }
+
+        /* ── bottom nav ── */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1020;
+            background: rgba(13, 22, 48, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid var(--border-card);
+            display: flex;
+            justify-content: space-around;
+            padding: 0.35rem 0;
+            padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+        }
+        .bottom-nav a {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.1rem;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 0.55rem;
             font-weight: 500;
-            padding: 0.5rem 1rem !important;
+            padding: 0.2rem 0.6rem;
             border-radius: 8px;
-            transition: all 0.2s;
+            transition: all 0.15s;
+            min-width: 52px;
         }
-        .nav-link:hover, .nav-link.active {
-            color: var(--text-bright) !important;
-            background: rgba(255,255,255,0.05);
+        .bottom-nav a i { font-size: 1.25rem; }
+        .bottom-nav a.active, .bottom-nav a:active {
+            color: var(--accent-green);
         }
-        .nav-link i {
-            margin-right: 6px;
-        }
+        .bottom-nav a.home-active { color: var(--accent-green); }
+
+        /* ── cards ── */
         .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 16px;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+            overflow: hidden;
         }
         .card-header {
             background: transparent;
-            border-bottom: 1px solid var(--card-border);
-            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 0.9rem 1.1rem;
             font-weight: 600;
+            font-size: 0.95rem;
         }
+
+        /* ── stat cards ── */
         .stat-card {
-            padding: 1.25rem;
-            border-radius: 12px;
-            background: linear-gradient(135deg, rgba(19,26,46,0.9) 0%, rgba(26,35,64,0.9) 100%);
-            border: 1px solid var(--card-border);
-            transition: transform 0.2s;
+            padding: 1.1rem 1.1rem;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(17,27,51,0.95) 0%, rgba(22,36,66,0.95) 100%);
+            border: 1px solid var(--border-card);
+            transition: transform 0.15s, box-shadow 0.15s;
         }
-        .stat-card:hover {
-            transform: translateY(-2px);
-        }
-        .stat-card .stat-icon {
-            font-size: 2rem;
-            opacity: 0.8;
-        }
-        .stat-value {
-            font-size: 1.75rem;
-            font-weight: 700;
-        }
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.85rem;
+        .stat-card:active { transform: scale(0.98); }
+        .stat-card .stat-icon { font-size: 1.6rem; opacity: 0.7; }
+        .stat-card .stat-value { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+        .stat-card .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+
+        /* ── tables ── */
+        .table {
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            margin-bottom: 0;
+        }
+        .table thead th {
+            border-bottom: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.65rem 0.75rem;
+        }
+        .table td {
+            border-color: var(--border-subtle);
+            vertical-align: middle;
+            padding: 0.65rem 0.75rem;
+        }
+        .table-hover tbody tr:hover { background: rgba(255,255,255,0.02); }
+        .table tbody tr { transition: background 0.1s; }
+
+        /* ── colors ── */
         .text-green { color: var(--accent-green); }
         .text-red { color: var(--accent-red); }
         .text-blue { color: var(--accent-blue); }
         .text-orange { color: var(--accent-orange); }
-        .bg-green { background: rgba(0,200,83,0.15); }
-        .bg-red { background: rgba(255,82,82,0.15); }
-        .bg-blue { background: rgba(68,130,255,0.15); }
-        .badge-category {
-            padding: 0.3rem 0.7rem;
+        .text-purple { color: var(--accent-purple); }
+        .bg-green { background: rgba(0,230,118,0.12); }
+        .bg-red { background: rgba(255,82,82,0.12); }
+        .bg-blue { background: rgba(68,130,255,0.12); }
+        .bg-orange { background: rgba(255,171,0,0.12); }
+        .bg-purple { background: rgba(179,136,255,0.12); }
+
+        .badge-cat {
+            padding: 0.2rem 0.6rem;
             border-radius: 20px;
             font-weight: 500;
-            font-size: 0.75rem;
+            font-size: 0.65rem;
+            display: inline-block;
         }
-        .table {
-            color: var(--text-bright);
-            font-size: 0.9rem;
+        .badge-cat.bg-blue { background: rgba(68,130,255,0.15); color: #82b1ff; }
+        .badge-cat.bg-green { background: rgba(0,230,118,0.12); color: #69f0ae; }
+        .badge-cat.bg-orange { background: rgba(255,171,0,0.12); color: #ffd740; }
+        .badge-cat.bg-red { background: rgba(255,82,82,0.12); color: #ff8a80; }
+        .badge-cat.bg-purple { background: rgba(179,136,255,0.12); color: #ccabff; }
+
+        .dot {
+            width: 8px; height: 8px; border-radius: 50%; display: inline-block;
         }
-        .table thead th {
-            border-bottom: 1px solid var(--card-border);
-            color: var(--text-muted);
+        .dot-green { background: var(--accent-green); }
+        .dot-red { background: var(--accent-red); }
+        .dot-blue { background: var(--accent-blue); }
+        .dot-orange { background: var(--accent-orange); }
+
+        /* ── buttons ── */
+        .btn {
+            border-radius: 10px;
             font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.5px;
-        }
-        .table td {
-            border-color: rgba(255,255,255,0.04);
-            vertical-align: middle;
-        }
-        .table-hover tbody tr:hover {
-            background: rgba(255,255,255,0.03);
+            padding: 0.45rem 1rem;
+            font-size: 0.85rem;
         }
         .btn-primary {
             background: var(--accent-blue);
             border: none;
-            border-radius: 8px;
-            padding: 0.5rem 1.25rem;
-            font-weight: 600;
         }
+        .btn-primary:hover { background: #2979ff; }
         .btn-success {
             background: var(--accent-green);
             border: none;
-            border-radius: 8px;
-            padding: 0.5rem 1.25rem;
-            font-weight: 600;
+            color: #000;
         }
+        .btn-success:hover { background: #00c853; }
         .btn-outline-light {
-            border-color: var(--card-border);
-            color: var(--text-bright);
-            border-radius: 8px;
+            border-color: var(--border-card);
+            color: var(--text-primary);
         }
         .btn-outline-light:hover {
-            background: rgba(255,255,255,0.08);
-            border-color: var(--text-muted);
+            background: rgba(255,255,255,0.06);
+            border-color: var(--text-secondary);
         }
+        .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; border-radius: 8px; }
+
+        /* ── forms ── */
         .form-control, .form-select {
-            background: #0d1630;
-            border: 1px solid var(--card-border);
-            color: var(--text-bright);
-            border-radius: 8px;
-            padding: 0.6rem 0.9rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-card);
+            color: var(--text-primary);
+            border-radius: 10px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.9rem;
         }
         .form-control:focus, .form-select:focus {
-            background: #0d1630;
+            background: var(--bg-surface);
             border-color: var(--accent-blue);
-            box-shadow: 0 0 0 0.2rem rgba(68,130,255,0.25);
-            color: var(--text-bright);
+            box-shadow: 0 0 0 0.2rem rgba(68,130,255,0.2);
+            color: var(--text-primary);
         }
-        .form-label {
-            font-weight: 500;
-            font-size: 0.85rem;
-            color: var(--text-muted);
+        .form-control::placeholder { color: var(--text-secondary); opacity: 0.5; }
+        .form-label { font-weight: 500; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.2rem; }
+        .input-group-text {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-card);
+            color: var(--text-secondary);
         }
-        .alert {
-            border-radius: 10px;
-            border: none;
-        }
-        .amount-input-group {
-            position: relative;
-        }
-        .amount-input-group .currency-symbol {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-weight: 600;
-            z-index: 5;
-        }
-        .amount-input-group input {
-            padding-left: 30px;
-        }
-        .category-dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 6px;
-        }
-        .flash-messages {
+
+        /* ── flash ── */
+        .flash-container {
             position: fixed;
-            top: 80px;
-            right: 20px;
+            top: 72px;
+            right: 12px;
             z-index: 9999;
-            max-width: 400px;
+            max-width: 360px;
+            width: 90%;
         }
-        .flash-messages .alert {
+        .flash-container .alert {
+            border-radius: 12px;
+            border: none;
             margin-bottom: 8px;
-            animation: slideIn 0.3s ease;
+            animation: flashIn 0.25s ease;
+            font-size: 0.85rem;
+            padding: 0.6rem 1rem;
         }
-        @keyframes slideIn {
+        .alert-dismissible .btn-close { filter: invert(0.8); font-size: 0.75rem; }
+        @keyframes flashIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
-        footer {
-            border-top: 1px solid var(--card-border);
-            padding: 1.5rem 0;
-            margin-top: 3rem;
-            color: var(--text-muted);
+
+        /* ── pagination ── */
+        .page-link {
+            background: transparent;
+            border: 1px solid var(--border-card);
+            color: var(--text-secondary);
+            border-radius: 8px !important;
+            margin: 0 2px;
+            font-size: 0.75rem;
+            padding: 0.3rem 0.65rem;
         }
-        .progress-bar-container {
-            height: 8px;
-            border-radius: 4px;
+        .page-link:hover {
             background: rgba(255,255,255,0.06);
+            color: var(--text-primary);
         }
-        .progress-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.6s ease;
+        .page-item.active .page-link {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
         }
-        @media (max-width: 768px) {
-            .stat-value { font-size: 1.3rem; }
-            .navbar-brand { font-size: 1.1rem; }
-            .flash-messages { max-width: 300px; right: 10px; top: 70px; }
+        .page-item.disabled .page-link {
+            background: transparent;
+            border-color: var(--border-subtle);
+            color: var(--text-secondary);
+            opacity: 0.4;
         }
+
+        /* ── responsive ── */
+        .stat-value-sm { font-size: 1.15rem; }
+
+        @media (min-width: 768px) {
+            body { padding-bottom: 0; }
+            .bottom-nav { display: none; }
+            .desktop-nav { display: flex !important; }
+            .top-bar { padding: 0.75rem 1.5rem; }
+        }
+        @media (max-width: 767.98px) {
+            .stat-card .stat-value { font-size: 1.2rem; }
+            .table { font-size: 0.78rem; }
+            .table td, .table th { padding: 0.5rem 0.5rem; }
+            .card { border-radius: 12px; }
+            .form-control, .form-select { font-size: 16px; } /* prevent iOS zoom */
+        }
+        @media (min-width: 768px) {
+            .container-wide {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding-left: 220px !important;
+            }
+        }
+
+        /* ── misc helpers ── */
+        .fw-semibold { font-weight: 600; }
+        .border-subtle { border-color: var(--border-subtle) !important; }
+        .bg-surface { background: var(--bg-surface); }
+        .gap-1 { gap: 0.25rem; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-3 { gap: 1rem; }
+        .text-secondary-custom { color: var(--text-secondary); }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid px-3 px-lg-4">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-wallet2"></i> Finance Tracker
-            </a>
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
-                <i class="bi bi-list text-white"></i>
-            </button>
-            <div class="collapse navbar-collapse" id="navMenu">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
-                            <i class="bi bi-house"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/add' %}active{% endif %}" href="/add">
-                            <i class="bi bi-plus-circle"></i> Add
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/upload' %}active{% endif %}" href="/upload">
-                            <i class="bi bi-upload"></i> Upload
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/reports' %}active{% endif %}" href="/reports">
-                            <i class="bi bi-bar-chart"></i> Reports
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">
-                            <i class="bi bi-gear"></i> Settings
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/people' %}active{% endif %}" href="/people">
-                            <i class="bi bi-people"></i> People
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/balances' %}active{% endif %}" href="/balances">
-                            <i class="bi bi-bank"></i> Balances
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/cashback' %}active{% endif %}" href="/cashback">
-                            <i class="bi bi-cash"></i> Cashback
-                        </a>
-                    </li>
-                </ul>
-            </div>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <a href="/" class="brand">
+            <i class="bi bi-wallet2"></i>
+            <span class="d-none d-sm-inline">Finance Tracker</span>
+            <span class="d-sm-none">FT</span>
+        </a>
+        <div class="d-flex align-items-center gap-2">
+            <a href="/add" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> <span class="d-none d-sm-inline">Add</span></a>
+            <a href="/transactions" class="btn btn-sm btn-outline-light"><i class="bi bi-search"></i> <span class="d-none d-sm-inline">All</span></a>
         </div>
-    </nav>
+    </div>
 
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-    <div class="flash-messages">
+    <div class="flash-container">
         {% for category, message in messages %}
         <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show">
             {{ message }}
@@ -292,24 +347,66 @@
     {% endwith %}
 
     <!-- Main Content -->
-    <div class="container-fluid px-3 px-lg-4 py-3">
+    <div class="container-wide px-3 px-lg-4 py-3">
         {% block content %}{% endblock %}
     </div>
 
-    <!-- Footer -->
-    <footer class="text-center">
-        <small>💰 Finance Tracker — Own your money.</small>
-    </footer>
+    <!-- Desktop Sidebar (visible md+) -->
+    <div class="desktop-nav d-none d-md-flex flex-column position-fixed start-0 top-0 h-100 p-3" style="width: 200px; background: var(--bg-card); border-right: 1px solid var(--border-card); z-index: 1030; padding-top: 70px;">
+        <nav class="d-flex flex-column gap-1">
+            {% macro nav_item(icon, label, href, exact=false) %}
+            <a href="{{ href }}"
+               class="px-3 py-2 rounded-3 text-decoration-none d-flex align-items-center gap-2"
+               style="{% if (exact and request.path == href) or (not exact and request.path != '/' and request.path.startswith(href)) %}background: rgba(68,130,255,0.12); color: var(--accent-blue); font-weight: 600;{% else %}color: var(--text-secondary);{% endif %} transition: all 0.15s;"
+               onmouseover="this.style.background='rgba(255,255,255,0.04)'"
+               onmouseout="this.style.background='{% if (exact and request.path == href) or (not exact and request.path != '/' and request.path.startswith(href)) %}rgba(68,130,255,0.12){% else %}transparent{% endif %}'">
+                <i class="bi bi-{{ icon }}" style="font-size:1.1rem;"></i>
+                <span style="font-size:0.85rem;">{{ label }}</span>
+            </a>
+            {% endmacro %}
+            {{ nav_item('house', 'Dashboard', '/', exact=true) }}
+            {{ nav_item('plus-circle', 'Add', '/add') }}
+            {{ nav_item('list-ul', 'Transactions', '/transactions') }}
+            {{ nav_item('bar-chart', 'Reports', '/reports') }}
+            {{ nav_item('cash-coin', 'Cashback', '/cashback') }}
+            {{ nav_item('bank', 'Balances', '/balances') }}
+            {{ nav_item('people', 'People', '/people') }}
+            {{ nav_item('gear', 'Settings', '/settings') }}
+        </nav>
+    </div>
+
+    <!-- Bottom Nav (mobile) -->
+    <nav class="bottom-nav">
+        <a href="/" class="{% if request.path == '/' %}home-active{% endif %}">
+            <i class="bi bi-house"></i>
+            <span>Home</span>
+        </a>
+        <a href="/transactions" class="{% if request.path == '/transactions' %}home-active{% endif %}">
+            <i class="bi bi-list-ul"></i>
+            <span>All</span>
+        </a>
+        <a href="/add">
+            <i class="bi bi-plus-circle" style="color: var(--accent-green); font-size: 1.6rem; margin-top: -6px;"></i>
+            <span style="color: var(--accent-green);">Add</span>
+        </a>
+        <a href="/reports" class="{% if request.path == '/reports' %}home-active{% endif %}">
+            <i class="bi bi-bar-chart"></i>
+            <span>Reports</span>
+        </a>
+        <a href="/cashback" class="{% if request.path == '/cashback' %}home-active{% endif %}">
+            <i class="bi bi-cash-coin"></i>
+            <span>Cashback</span>
+        </a>
+    </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Auto-dismiss flash messages
         setTimeout(() => {
-            document.querySelectorAll('.flash-messages .alert').forEach(el => {
+            document.querySelectorAll('.flash-container .alert').forEach(el => {
                 el.classList.remove('show');
                 setTimeout(() => el.remove(), 300);
             });
-        }, 5000);
+        }, 4000);
     </script>
     {% block scripts %}{% endblock %}
 </body>

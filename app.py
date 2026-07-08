@@ -422,12 +422,52 @@ def export_monthly_excel(year, month):
 def index():
     """Dashboard — show daily summary + quick stats."""
     today = date.today().strftime("%Y-%m-%d")
-    daily = get_daily_summary(today)
+    sort_by = request.args.get("sort", "id")
+    sort_today = request.args.get("sort_today", "id")
+    per_page = 10
 
-    # Recent transactions (last 20)
     conn = get_db()
+
+    # ─── Today's Transactions (paginated) ─────────────────────────────────
+    page_today = int(request.args.get("page_today", 1))
+    today_total = conn.execute(
+        "SELECT COUNT(*) FROM transactions WHERE date = ?", (today,)
+    ).fetchone()[0]
+    today_pages = max(1, (today_total + per_page - 1) // per_page)
+    if page_today > today_pages:
+        page_today = today_pages
+    today_offset = (page_today - 1) * per_page
+
+    if sort_today == "amount":
+        today_order = "amount DESC, id DESC"
+    else:
+        today_order = "id DESC"
+    today_rows = conn.execute(
+        f"SELECT * FROM transactions WHERE date = ? ORDER BY {today_order} LIMIT ? OFFSET ?",
+        (today, per_page, today_offset)
+    ).fetchall()
+    total_debit = sum(r["amount"] for r in today_rows if r["txn_type"] == "debit")
+    total_credit = sum(r["amount"] for r in today_rows if r["txn_type"] == "credit")
+    daily = {"date": today, "transactions": today_rows,
+             "total_debit": total_debit, "total_credit": total_credit}
+
+    # ─── Recent Transactions (paginated) ──────────────────────────────────
+    page_recent = int(request.args.get("page_recent", 1))
+    recent_total = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
+    recent_pages = max(1, (recent_total + per_page - 1) // per_page)
+    if page_recent > recent_pages:
+        page_recent = recent_pages
+    recent_offset = (page_recent - 1) * per_page
+
+    if sort_by == "date":
+        order_clause = "date DESC, id DESC"
+    elif sort_by == "amount":
+        order_clause = "amount DESC, id DESC"
+    else:
+        order_clause = "id DESC"
     recent = conn.execute(
-        "SELECT * FROM transactions ORDER BY id DESC LIMIT 20"
+        f"SELECT * FROM transactions ORDER BY {order_clause} LIMIT ? OFFSET ?",
+        (per_page, recent_offset)
     ).fetchall()
 
     # Monthly total so far
@@ -452,7 +492,11 @@ def index():
                          monthly_total=monthly_total,
                          total_cb=total_cb,
                          cards=cards,
-                         categories=categories)
+                         categories=categories,
+                         sort_by=sort_by,
+                         sort_today=sort_today,
+                         page_today=page_today, today_pages=today_pages, today_total=today_total,
+                         page_recent=page_recent, recent_pages=recent_pages, recent_total=recent_total)
 
 
 def get_all_persons():
@@ -1109,6 +1153,96 @@ def manual_sync():
     else:
         flash(f"✅ Already in sync", "success")
     return redirect(request.referrer or url_for("index"))
+
+
+# ─── All Transactions Page ─────────────────────────────────────────────────────
+@app.route("/transactions")
+def all_transactions():
+    """Paginated, sortable, filterable list of all transactions."""
+    page = int(request.args.get("page", 1))
+    per_page = 50
+    sort_by = request.args.get("sort", "date")
+    sort_dir = request.args.get("dir", "desc")
+
+    # Filters
+    filter_cat = request.args.get("category", "")
+    filter_card = request.args.get("card_id", "")
+    filter_type = request.args.get("txn_type", "")
+    filter_search = request.args.get("q", "").strip()
+    filter_from = request.args.get("from", "")
+    filter_to = request.args.get("to", "")
+
+    conn = get_db()
+    where_clauses = []
+    params = []
+
+    if filter_cat:
+        where_clauses.append("category = ?")
+        params.append(filter_cat)
+    if filter_card:
+        where_clauses.append("card_id = ?")
+        params.append(filter_card)
+    if filter_type in ("debit", "credit"):
+        where_clauses.append("txn_type = ?")
+        params.append(filter_type)
+    if filter_search:
+        where_clauses.append("(description LIKE ? OR notes LIKE ?)")
+        params.extend([f"%{filter_search}%", f"%{filter_search}%"])
+    if filter_from:
+        where_clauses.append("date >= ?")
+        params.append(filter_from)
+    if filter_to:
+        where_clauses.append("date <= ?")
+        params.append(filter_to)
+
+    where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+    allowed_sorts = {"date": "date", "amount": "amount", "description": "description", "id": "id"}
+    sort_col = allowed_sorts.get(sort_by, "date")
+    direction = "DESC" if sort_dir == "desc" else "ASC"
+    order_sql = f" ORDER BY {sort_col} {direction}, id DESC"
+
+    total = conn.execute(f"SELECT COUNT(*) FROM transactions{where_sql}", params).fetchone()[0]
+    pages = max(1, (total + per_page - 1) // per_page)
+    if page > pages:
+        page = pages
+    offset = (page - 1) * per_page
+
+    rows = conn.execute(
+        f"SELECT * FROM transactions{where_sql}{order_sql} LIMIT ? OFFSET ?",
+        params + [per_page, offset]
+    ).fetchall()
+    conn.close()
+
+    cards = load_cards()
+    categories = load_categories()
+
+    is_ajax = request.args.get("ajax") == "1"
+
+    if is_ajax:
+        table_html = render_template("_transactions_table.html",
+            transactions=rows, page=page, pages=pages, total=total,
+            sort_by=sort_by, sort_dir=sort_dir,
+            filter_cat=filter_cat, filter_card=filter_card,
+            filter_type=filter_type, filter_search=filter_search,
+            filter_from=filter_from, filter_to=filter_to)
+        pagination_html = render_template("_transactions_pagination.html",
+            page=page, pages=pages, total=total,
+            sort_by=sort_by, sort_dir=sort_dir,
+            filter_cat=filter_cat, filter_card=filter_card,
+            filter_type=filter_type, filter_search=filter_search,
+            filter_from=filter_from, filter_to=filter_to)
+        return jsonify(table_html=table_html, pagination_html=pagination_html)
+
+    return render_template("all_transactions.html",
+                         transactions=rows,
+                         page=page, pages=pages, total=total,
+                         sort_by=sort_by, sort_dir=sort_dir,
+                         filter_cat=filter_cat, filter_card=filter_card,
+                         filter_type=filter_type, filter_search=filter_search,
+                         filter_from=filter_from, filter_to=filter_to,
+                         cards=cards, categories=categories,
+                         per_page=per_page)
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────

@@ -1,0 +1,63 @@
+{% if transactions %}
+<div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th>
+                    <a href="/transactions?sort=date&dir={% if sort_by == 'date' and sort_dir == 'desc' %}asc{% else %}desc{% endif %}&page={{ page }}&category={{ filter_cat }}&card_id={{ filter_card }}&txn_type={{ filter_type }}&q={{ filter_search }}&from={{ filter_from }}&to={{ filter_to }}" class="text-decoration-none {% if sort_by == 'date' %}text-light{% else %}text-secondary-custom{% endif %}">
+                        Date {% if sort_by == 'date' %}<i class="bi bi-caret-{% if sort_dir == 'desc' %}down{% else %}up{% endif %}-fill"></i>{% endif %}
+                    </a>
+                </th>
+                <th>
+                    <a href="/transactions?sort=description&dir=asc&page={{ page }}&category={{ filter_cat }}&card_id={{ filter_card }}&txn_type={{ filter_type }}&q={{ filter_search }}&from={{ filter_from }}&to={{ filter_to }}" class="text-decoration-none {% if sort_by == 'description' %}text-light{% else %}text-secondary-custom{% endif %}">
+                        Description {% if sort_by == 'description' %}<i class="bi bi-caret-up-fill"></i>{% endif %}
+                    </a>
+                </th>
+                <th>
+                    <a href="/transactions?sort=amount&dir={% if sort_by == 'amount' and sort_dir == 'desc' %}asc{% else %}desc{% endif %}&page={{ page }}&category={{ filter_cat }}&card_id={{ filter_card }}&txn_type={{ filter_type }}&q={{ filter_search }}&from={{ filter_from }}&to={{ filter_to }}" class="text-decoration-none {% if sort_by == 'amount' %}text-light{% else %}text-secondary-custom{% endif %}">
+                        Amount {% if sort_by == 'amount' %}<i class="bi bi-caret-{% if sort_dir == 'desc' %}down{% else %}up{% endif %}-fill"></i>{% endif %}
+                    </a>
+                </th>
+                <th>Category</th>
+                <th class="d-none d-sm-table-cell">Card</th>
+                <th class="d-none d-sm-table-cell text-end">CB</th>
+                <th style="width:35px"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for txn in transactions %}
+            <tr>
+                <td><small class="text-secondary-custom">{{ txn.date }}</small></td>
+                <td>
+                    <div class="fw-semibold" style="font-size:0.82rem">{{ txn.description[:45] }}{% if txn.description|length > 45 %}...{% endif %}</div>
+                    {% if txn.person %}<small class="text-secondary-custom">👤 {{ txn.person }}</small>{% endif %}
+                </td>
+                <td>
+                    <span class="{% if txn.txn_type == 'debit' %}text-red{% else %}text-green{% endif %} fw-semibold">
+                        {% if txn.txn_type == 'debit' %}-{% else %}+{% endif %}₹{{ "%.0f"|format(txn.amount) }}
+                    </span>
+                </td>
+                <td><span class="badge-cat bg-blue">{{ txn.category }}</span></td>
+                <td class="d-none d-sm-table-cell"><small class="text-secondary-custom">{{ txn.card_id }}</small></td>
+                <td class="d-none d-sm-table-cell text-end">
+                    {% if txn.cashback and txn.cashback > 0 %}
+                    <small class="text-green fw-semibold">+₹{{ "%.0f"|format(txn.cashback) }}</small>
+                    {% else %}
+                    <small class="text-secondary-custom">—</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/edit/{{ txn.id }}" class="btn btn-sm btn-outline-warning border-0 px-1" title="Edit"><i class="bi bi-pencil"></i></a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card-body text-center py-5 text-secondary-custom">
+    <i class="bi bi-database" style="font-size:2rem"></i>
+    <p class="mt-2">No transactions match your filters</p>
+    <a href="/transactions" class="btn btn-sm btn-outline-light">Clear filters</a>
+</div>
+{% endif %}
