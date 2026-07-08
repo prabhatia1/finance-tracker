@@ -494,6 +494,17 @@
             {{ nav_item('people', 'People', '/people') }}
             {{ nav_item('gear', 'Settings', '/settings') }}
         </nav>
+        {% if session.get("display_name") %}
+        <div class="sidebar-footer">
+            <hr style="border-color: var(--border-card); margin: 0.5rem 0;">
+            <div class="px-3 py-2 d-flex align-items-center justify-content-between">
+                <small class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ session["display_name"] }}</small>
+                <a href="{{ url_for('logout') }}" class="text-decoration-none small" style="color:var(--accent-red);">
+                    <i class="bi bi-box-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Desktop hover trigger -->

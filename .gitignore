@@ -34,6 +34,7 @@ test_report.xlsx
 
 # Flask
 instance/
+.secret_key
 
 # Windows reserved names
 nul

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — Finance Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #0f0f1a; color: #e0e0e0; min-height: 100vh; display: flex; align-items: center; }
+        .auth-card { max-width: 420px; margin: 0 auto; }
+        .card { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 16px; }
+        .card-header { background: transparent; border-bottom: 1px solid #2a2a4a; }
+        .form-control { background: #12121e; border: 1px solid #2a2a4a; color: #e0e0e0; }
+        .form-control:focus { background: #12121e; border-color: #6c5ce7; color: #e0e0e0; box-shadow: 0 0 0 2px rgba(108,92,231,.3); }
+        .btn-primary { background: #6c5ce7; border: none; }
+        .btn-primary:hover { background: #5a4bd1; }
+        .logo { font-size: 2rem; color: #6c5ce7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="auth-card">
+            <div class="card">
+                <div class="card-header text-center py-4">
+                    <div class="logo mb-2"><i class="bi bi-person-plus"></i></div>
+                    <h4 class="mb-0">Create Account</h4>
+                    <small class="text-muted">Register for Finance Tracker</small>
+                </div>
+                <div class="card-body p-4">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show py-2 small">
+                                    {{ message }}
+                                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    <form method="post">
+                        <div class="mb-3">
+                            <label class="form-label small">Username</label>
+                            <input type="text" name="username" class="form-control" placeholder="Choose a username" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small">Display Name</label>
+                            <input type="text" name="display_name" class="form-control" placeholder="Your name (e.g. Pratik)" required>
+                            <div class="form-text text-muted small">This will be used as your person name on transactions.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small">Password</label>
+                            <input type="password" name="password" class="form-control" placeholder="At least 4 characters" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small">Confirm Password</label>
+                            <input type="password" name="confirm" class="form-control" placeholder="Repeat password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2 mt-2">Create Account</button>
+                    </form>
+                    <p class="text-center mt-3 mb-0 small text-muted">
+                        Already have an account? <a href="{{ url_for('login') }}" class="text-decoration-none" style="color:#6c5ce7;">Sign In</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
