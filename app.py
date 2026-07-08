@@ -1284,16 +1284,46 @@ def cashback_page():
 
 @login_required
 def open_excel():
-    """Open the Excel file in Excel application."""
-
-    person = session.get("display_name", "")
-    import subprocess, os
+    """Download the Excel file (instead of opening on server)."""
+    if session.get("username") != "pratik":
+        flash("⛔ Excel download is only available for the primary user.", "danger")
+        return redirect(request.referrer or url_for("index"))
     try:
-        subprocess.Popen(["start", "excel", str(EXCEL_PATH)], shell=True)
-        flash("📂 Excel file opened", "success")
+        return send_file(
+            EXCEL_PATH,
+            as_attachment=True,
+            download_name="expense_tracker.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     except Exception as e:
-        flash(f"❌ Could not open Excel: {e}", "danger")
-    return redirect(request.referrer or url_for("index"))
+        flash(f"❌ Could not serve Excel file: {e}", "danger")
+        return redirect(request.referrer or url_for("index"))
+
+
+@app.route("/backup-download")
+
+@login_required
+def backup_download():
+    """Download a ZIP of database + categories (Pratik only)."""
+    if session.get("username") != "pratik":
+        flash("⛔ Backup download is only available for the primary user.", "danger")
+        return redirect(request.referrer or url_for("index"))
+
+    import io, zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for path, arcname in [(DB_PATH, "finance.db"), (CATEGORIES_PATH, "categories.json")]:
+            if path.exists():
+                z.write(path, arcname)
+    buf.seek(0)
+    from datetime import datetime
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=f"finance_backup_{ts}.zip",
+        mimetype="application/zip"
+    )
 
 
 @app.route("/balances", methods=["GET", "POST"])

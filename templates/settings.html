@@ -217,6 +217,19 @@
     </div>
 </div>
 
+{% if session.get('username') == 'pratik' %}
+<!-- Backup Download -->
+<div class="card mt-3">
+    <div class="card-header">
+        <i class="bi bi-download me-1"></i> Backup & Migration
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-2">Download your full database + categories to migrate to another host.</p>
+        <a href="/backup-download" class="btn btn-outline-light"><i class="bi bi-file-zip"></i> Download Backup (.zip)</a>
+    </div>
+</div>
+{% endif %}
+
 <!-- Change Password -->
 <div class="card mt-3">
     <div class="card-header">
