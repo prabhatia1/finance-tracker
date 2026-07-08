@@ -40,3 +40,8 @@ instance/
 nul
 backups/
 ~$*.xlsx
+
+# Test artifacts
+e2e-test-report*.xlsx
+hermes-e2e-test-suite.py
+create_test_report.py
