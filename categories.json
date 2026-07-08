@@ -2,77 +2,277 @@
   "categories": [
     {
       "name": "Electricity Bill",
-      "keywords": ["electricity", "power", "msedcl", "mahadiscom", "torrent", "adani electricity", "biji", "bijli"],
+      "keywords": [
+        "electricity",
+        "power",
+        "msedcl",
+        "mahadiscom",
+        "torrent",
+        "adani electricity",
+        "biji",
+        "bijli"
+      ],
       "type": "bill"
     },
     {
       "name": "LIC Premium",
-      "keywords": ["lic", "life insurance", "lic of india", "lic premium"],
+      "keywords": [
+        "lic",
+        "life insurance",
+        "lic of india",
+        "lic premium"
+      ],
       "type": "insurance"
     },
     {
       "name": "Groceries",
-      "keywords": ["grocery", "big basket", "blinkit", "zepto", "instamart", "dmart", "reliance fresh", "jiomart", "nature's basket", "more supermarket", "spencer", "supermarket"],
+      "keywords": [
+        "grocery",
+        "big basket",
+        "blinkit",
+        "zepto",
+        "instamart",
+        "dmart",
+        "reliance fresh",
+        "jiomart",
+        "nature's basket",
+        "more supermarket",
+        "spencer",
+        "supermarket"
+      ],
       "type": "daily"
     },
     {
       "name": "Dining / Food",
-      "keywords": ["swiggy", "zomato", "restaurant", "dining", "eat", "pizza hut", "dominos", "mcdonald's", "kfc", "burger king", "starbucks", "cafe", "hotel", "dhaba", "food"],
+      "keywords": [
+        "swiggy",
+        "zomato",
+        "restaurant",
+        "dining",
+        "eat",
+        "pizza hut",
+        "dominos",
+        "mcdonald's",
+        "kfc",
+        "burger king",
+        "starbucks",
+        "cafe",
+        "hotel",
+        "dhaba",
+        "food"
+      ],
       "type": "daily"
     },
     {
       "name": "Fuel",
-      "keywords": ["fuel", "petrol", "diesel", "indian oil", "hp petrol", "bharat petroleum", "bpc", "iocl", "hpcl", "shell"],
+      "keywords": [
+        "fuel",
+        "petrol",
+        "diesel",
+        "indian oil",
+        "hp petrol",
+        "bharat petroleum",
+        "bpc",
+        "iocl",
+        "hpcl",
+        "shell"
+      ],
       "type": "transport"
     },
     {
       "name": "Shopping",
-      "keywords": ["amazon", "flipkart", "myntra", "ajio", "nykaa", "meesho", "tatacliq", "shopping", "clothing", "footwear", "electronics", "lifestyle"],
+      "keywords": [
+        "amazon",
+        "flipkart",
+        "myntra",
+        "ajio",
+        "nykaa",
+        "meesho",
+        "tatacliq",
+        "shopping",
+        "clothing",
+        "footwear",
+        "electronics",
+        "lifestyle"
+      ],
       "type": "lifestyle"
     },
     {
       "name": "EMI / Loan",
-      "keywords": ["emi", "loan", "finance", "insta loan", "personal loan", "auto loan"],
+      "keywords": [
+        "emi",
+        "loan",
+        "finance",
+        "insta loan",
+        "personal loan",
+        "auto loan"
+      ],
       "type": "finance"
     },
     {
       "name": "Rent",
-      "keywords": ["rent", "rental", "nobroker", "housing", "flat rent"],
+      "keywords": [
+        "rent",
+        "rental",
+        "nobroker",
+        "housing",
+        "flat rent"
+      ],
       "type": "housing"
     },
     {
       "name": "Recharge / Mobile",
-      "keywords": ["recharge", "mobile", "airtel", "jio", "vi", "vodafone", "prepaid", "postpaid", "broadband", "wifi"],
+      "keywords": [
+        "recharge",
+        "mobile",
+        "airtel",
+        "jio",
+        "vi",
+        "vodafone",
+        "prepaid",
+        "postpaid",
+        "broadband",
+        "wifi"
+      ],
       "type": "utility"
     },
     {
       "name": "Entertainment",
-      "keywords": ["netflix", "prime video", "hotstar", "disney", "youtube", "spotify", "bookmyshow", "movie", "cinema", "ott", "game", "gaming"],
+      "keywords": [
+        "netflix",
+        "prime video",
+        "hotstar",
+        "disney",
+        "youtube",
+        "spotify",
+        "bookmyshow",
+        "movie",
+        "cinema",
+        "ott",
+        "game",
+        "gaming"
+      ],
       "type": "entertainment"
     },
     {
       "name": "Travel",
-      "keywords": ["flight", "train", "irctc", "uber", "ola", "rapido", "indigo", "goair", "makemytrip", "goibibo", "booking", "oyo", "redbus", "bus", "cab", "taxi", "metro"],
+      "keywords": [
+        "flight",
+        "train",
+        "irctc",
+        "uber",
+        "ola",
+        "rapido",
+        "indigo",
+        "goair",
+        "makemytrip",
+        "goibibo",
+        "booking",
+        "oyo",
+        "redbus",
+        "bus",
+        "cab",
+        "taxi",
+        "metro"
+      ],
       "type": "transport"
     },
     {
       "name": "Medical / Health",
-      "keywords": ["hospital", "clinic", "doctor", "pharmacy", "medical", "medicine", "apollo", "practo", "health", "insurance", "diagnostic", "lab"],
+      "keywords": [
+        "hospital",
+        "clinic",
+        "doctor",
+        "pharmacy",
+        "medical",
+        "medicine",
+        "apollo",
+        "practo",
+        "health",
+        "insurance",
+        "diagnostic",
+        "lab"
+      ],
       "type": "health"
     },
     {
       "name": "Education",
-      "keywords": ["course", "class", "tuition", "udemy", "coursera", "udacity", "skill", "university", "college", "school", "fee", "book"],
+      "keywords": [
+        "course",
+        "class",
+        "tuition",
+        "udemy",
+        "coursera",
+        "udacity",
+        "skill",
+        "university",
+        "college",
+        "school",
+        "fee",
+        "book"
+      ],
       "type": "education"
     },
     {
       "name": "Friends / Transfer",
-      "keywords": ["upi", "gpay", "paytm", "phonepe", "transfer", "friend", "sent to", "paid to", "repaid", "split", "shared"],
+      "keywords": [
+        "upi",
+        "gpay",
+        "paytm",
+        "phonepe",
+        "transfer",
+        "friend",
+        "sent to",
+        "paid to",
+        "repaid",
+        "split",
+        "shared"
+      ],
       "type": "transfer"
     },
     {
       "name": "Other",
       "keywords": [],
+      "type": "other"
+    },
+    {
+      "name": "E2ETestCat",
+      "keywords": [
+        "e2e",
+        "test"
+      ],
+      "type": "other"
+    },
+    {
+      "name": "E2ETestCat",
+      "keywords": [
+        "e2e",
+        "test"
+      ],
+      "type": "other"
+    },
+    {
+      "name": "E2ETestCat",
+      "keywords": [
+        "e2e",
+        "test"
+      ],
+      "type": "other"
+    },
+    {
+      "name": "E2ETestCat",
+      "keywords": [
+        "e2e",
+        "test"
+      ],
+      "type": "other"
+    },
+    {
+      "name": "E2ETestCat",
+      "keywords": [
+        "e2e",
+        "test"
+      ],
       "type": "other"
     }
   ]

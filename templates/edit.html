@@ -53,7 +53,7 @@
                         <div class="col-6 col-md-6">
                             <label class="form-label">Person <small class="text-secondary-custom">(optional)</small></label>
                             <select class="form-select" name="person">
-                                <option value="">— None —</option>
+                                <option value="" {% if not txn.person %}selected{% endif %}>— None —</option>
                                 {% for p in persons %}
                                 <option value="{{ p }}" {% if txn.person == p %}selected{% endif %}>{{ p }}</option>
                                 {% endfor %}

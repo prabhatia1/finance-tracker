@@ -458,13 +458,13 @@ def parse_uploaded_csv(file_content, card_id=None):
 
 # ─── Report Engine ────────────────────────────────────────────────────────────
 
-def get_daily_summary(txn_date=None, person=""):
+def get_daily_summary(txn_date=None, user_id=None):
     """Get today's or a specific day's transactions and totals."""
     if txn_date is None:
         txn_date = date.today().strftime("%Y-%m-%d")
     conn = get_db()
     rows = conn.execute(
-        "SELECT * FROM transactions WHERE date = ? AND person = ? ORDER BY id", (txn_date, person,)
+        "SELECT * FROM transactions WHERE date = ? AND user_id = ? ORDER BY id", (txn_date, user_id,)
     ).fetchall()
     total = sum(r["amount"] for r in rows if r["txn_type"] == "debit")
     credits = sum(r["amount"] for r in rows if r["txn_type"] == "credit")
@@ -472,7 +472,7 @@ def get_daily_summary(txn_date=None, person=""):
     return {"date": txn_date, "transactions": rows, "total_debit": total, "total_credit": credits}
 
 
-def get_monthly_report(year=None, month=None, person=""):
+def get_monthly_report(year=None, month=None, user_id=None):
     """Get category-wise and card-wise breakdown for a month."""
     today = date.today()
     if year is None:
@@ -483,9 +483,9 @@ def get_monthly_report(year=None, month=None, person=""):
     conn = get_db()
     rows = conn.execute(
         """SELECT * FROM transactions
-           WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND person = ?
+           WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND user_id = ?
            ORDER BY date, id""",
-        (str(year), f"{month:02d}", person,)
+        (str(year), f"{month:02d}", user_id,)
     ).fetchall()
     conn.close()
 
@@ -531,7 +531,7 @@ def get_monthly_report(year=None, month=None, person=""):
     }
 
 
-def get_card_report(card_id=None, year=None, month=None, person=""):
+def get_card_report(card_id=None, year=None, month=None, user_id=None):
     """Get spending breakdown for a specific card or all cards."""
     today = date.today()
     if year is None:
@@ -543,16 +543,16 @@ def get_card_report(card_id=None, year=None, month=None, person=""):
     if card_id:
         rows = conn.execute(
             """SELECT * FROM transactions
-               WHERE card_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ? AND person = ?
+               WHERE card_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ? AND user_id = ?
                ORDER BY date, id""",
-            (card_id, str(year), f"{month:02d}", person,)
+            (card_id, str(year), f"{month:02d}", user_id,)
         ).fetchall()
     else:
         rows = conn.execute(
             """SELECT * FROM transactions
-               WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND person = ?
+               WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND user_id = ?
                ORDER BY date, id""",
-            (str(year), f"{month:02d}", person,)
+            (str(year), f"{month:02d}", user_id,)
         ).fetchall()
     conn.close()
 
@@ -569,21 +569,21 @@ def export_csv(transactions):
         writer.writerow([
             t["date"], t["description"], t["amount"],
             t["category"], t["card_id"], t["txn_type"],
-            t.get("notes", ""), t.get("source", "")
+            t["notes"] or "", t["source"] or ""
         ])
     output.seek(0)
     return output
 
 
-def export_monthly_excel(year, month):
+def export_monthly_excel(year, month, user_id=None):
     """Generate Excel report using CSV (simple, universal)."""
     conn = get_db()
     rows = conn.execute(
         """SELECT date, description, amount, category, card_id, txn_type, notes, source
            FROM transactions
-           WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND person = ?
+           WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND user_id = ?
            ORDER BY date, id""",
-        (str(year), f"{month:02d}", person,)
+        (str(year), f"{month:02d}", user_id,)
     ).fetchall()
     conn.close()
     return export_csv(rows)
@@ -597,7 +597,6 @@ def export_monthly_excel(year, month):
 def index():
     """Dashboard — show daily summary + quick stats."""
 
-    person = session.get("display_name", "")
     user_id = session["user_id"]
     today = date.today().strftime("%Y-%m-%d")
     sort_by = request.args.get("sort", "id")
@@ -609,7 +608,7 @@ def index():
     # ─── Today's Transactions (paginated) ─────────────────────────────────
     page_today = int(request.args.get("page_today", 1))
     today_total = conn.execute(
-        "SELECT COUNT(*) FROM transactions WHERE date = ? AND person = ?", (today, person,)
+        "SELECT COUNT(*) FROM transactions WHERE date = ? AND user_id = ?", (today, user_id,)
     ).fetchone()[0]
     today_pages = max(1, (today_total + per_page - 1) // per_page)
     if page_today > today_pages:
@@ -621,8 +620,8 @@ def index():
     else:
         today_order = "id DESC"
     today_rows = conn.execute(
-        f"SELECT * FROM transactions WHERE date = ? AND person = ? ORDER BY {today_order} LIMIT ? OFFSET ?",
-        (today, person, per_page, today_offset)
+        f"SELECT * FROM transactions WHERE date = ? AND user_id = ? ORDER BY {today_order} LIMIT ? OFFSET ?",
+        (today, user_id, per_page, today_offset)
     ).fetchall()
     total_debit = sum(r["amount"] for r in today_rows if r["txn_type"] == "debit")
     total_credit = sum(r["amount"] for r in today_rows if r["txn_type"] == "credit")
@@ -631,7 +630,7 @@ def index():
 
     # ─── Recent Transactions (paginated) ──────────────────────────────────
     page_recent = int(request.args.get("page_recent", 1))
-    recent_total = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
+    recent_total = conn.execute("SELECT COUNT(*) FROM transactions WHERE user_id = ?", (user_id,)).fetchone()[0]
     recent_pages = max(1, (recent_total + per_page - 1) // per_page)
     if page_recent > recent_pages:
         page_recent = recent_pages
@@ -644,20 +643,20 @@ def index():
     else:
         order_clause = "id DESC"
     recent = conn.execute(
-        f"SELECT * FROM transactions WHERE person = ? ORDER BY {order_clause} LIMIT ? OFFSET ?",
-        (person, per_page, recent_offset)
+        f"SELECT * FROM transactions WHERE user_id = ? ORDER BY {order_clause} LIMIT ? OFFSET ?",
+        (user_id, per_page, recent_offset)
     ).fetchall()
 
     # Monthly total so far
     monthly_total = conn.execute(
         "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE "
-        "strftime('%Y', date) = ? AND strftime('%m', date) = ? AND txn_type = 'debit' AND person = ?",
-        (str(date.today().year), f"{date.today().month:02d}", person,)
+        "strftime('%Y', date) = ? AND strftime('%m', date) = ? AND txn_type = 'debit' AND user_id = ?",
+        (str(date.today().year), f"{date.today().month:02d}", user_id,)
     ).fetchone()[0]
 
     # Total cashback earned (all time)
     total_cb = conn.execute(
-        "SELECT COALESCE(SUM(cashback), 0) FROM transactions WHERE cashback > 0 AND person = ?", (person,)
+        "SELECT COALESCE(SUM(cashback), 0) FROM transactions WHERE cashback > 0 AND user_id = ?", (user_id,)
     ).fetchone()[0]
     conn.close()
 
@@ -703,8 +702,6 @@ def add_transaction():
     cards = get_user_cards(user_id)
     categories = load_categories()
     persons = [p["name"] for p in get_user_people(user_id)]
-    if display_name and display_name not in persons:
-        persons.insert(0, display_name)
 
     if request.method == "POST":
         txn_date = request.form.get("date", date.today().strftime("%Y-%m-%d"))
@@ -716,7 +713,7 @@ def add_transaction():
             card_id = "other"
         txn_type = request.form.get("txn_type", "debit")
         notes = request.form.get("notes", "").strip()
-        person = request.form.get("person", session.get("display_name", "")).strip()
+        person = request.form.get("person", "").strip()
 
         if not description:
             flash("Description is required!", "danger")
@@ -740,9 +737,9 @@ def add_transaction():
 
         conn = get_db()
         conn.execute(
-            "INSERT INTO transactions (date, description, amount, category, card_id, txn_type, notes, source, person, cashback) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?)",
-            (txn_date, description, round(amount, 2), category, card_id, txn_type, notes, person, cashback)
+            "INSERT INTO transactions (date, description, amount, category, card_id, txn_type, notes, source, person, cashback, user_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?)",
+            (txn_date, description, round(amount, 2), category, card_id, txn_type, notes, person, cashback, user_id)
         )
         conn.commit()
         conn.close()
@@ -840,22 +837,34 @@ def add_transaction():
 def reports():
     """Reports page — daily, monthly, card-wise."""
 
-    person = session.get("display_name", "")
     user_id = session["user_id"]
     today = date.today()
 
     # Daily report
     day_param = request.args.get("day", today.strftime("%Y-%m-%d"))
-    daily = get_daily_summary(day_param, person)
+    daily = get_daily_summary(day_param, user_id)
 
     # Monthly report
     year_param = int(request.args.get("year", today.year))
-    month_param = int(request.args.get("month", today.month))
-    monthly = get_monthly_report(year_param, month_param, person)
+    month_raw = request.args.get("month", str(today.month))
+    try:
+        month_param = int(month_raw)
+    except ValueError:
+        # Try parsing YYYY-MM format
+        if "-" in month_raw:
+            parts = month_raw.split("-")
+            if len(parts) == 2:
+                year_param = int(parts[0])
+                month_param = int(parts[1])
+            else:
+                month_param = today.month
+        else:
+            month_param = today.month
+    monthly = get_monthly_report(year_param, month_param, user_id)
 
     # Card report
     card_param = request.args.get("card_id", None)
-    card_rpt = get_card_report(card_param, year_param, month_param, person)
+    card_rpt = get_card_report(card_param, year_param, month_param, user_id)
 
     cards = get_user_cards(user_id)
     card_map = {c["id"]: c["name"] for c in cards}
@@ -880,10 +889,10 @@ def reports():
 def export_data():
     """Export transactions as CSV."""
 
-    person = session.get("display_name", "")
+    user_id = session["user_id"]
     conn = get_db()
     rows = conn.execute(
-        "SELECT * FROM transactions ORDER BY date DESC, id DESC"
+        "SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, id DESC", (user_id,)
     ).fetchall()
     conn.close()
 
@@ -901,11 +910,11 @@ def export_data():
 def export_monthly():
     """Export monthly report as CSV."""
 
-    person = session.get("display_name", "")
+    user_id = session["user_id"]
     today = date.today()
     year = int(request.args.get("year", today.year))
     month = int(request.args.get("month", today.month))
-    output = export_monthly_excel(year, month)
+    output = export_monthly_excel(year, month, user_id)
     return Response(
         output.getvalue(),
         mimetype="text/csv",
@@ -921,9 +930,9 @@ def export_monthly():
 @login_required
 def delete_transaction(txn_id):
     """Delete a transaction."""
-    person = session.get("display_name", "")
+    user_id = session["user_id"]
     conn = get_db()
-    conn.execute("DELETE FROM transactions WHERE id = ? AND person = ?", (txn_id, person))
+    conn.execute("DELETE FROM transactions WHERE id = ? AND user_id = ?", (txn_id, user_id))
     conn.commit()
     conn.close()
 
@@ -943,7 +952,6 @@ def edit_transaction(txn_id):
     """Edit a transaction."""
     person = session.get("display_name", "")
     user_id = session["user_id"]
-    display_name = session.get("display_name", "")
     conn = get_db()
     if request.method == "POST":
         txn_date = request.form.get("date", date.today().strftime("%Y-%m-%d"))
@@ -955,7 +963,7 @@ def edit_transaction(txn_id):
             card_id = "other"
         txn_type = request.form.get("txn_type", "debit")
         notes = request.form.get("notes", "").strip()
-        person = request.form.get("person", session.get("display_name", "")).strip()
+        person = request.form.get("person", "").strip()
 
         if not description:
             flash("Description is required!", "danger")
@@ -977,8 +985,8 @@ def edit_transaction(txn_id):
 
         conn.execute(
             "UPDATE transactions SET date=?, description=?, amount=?, category=?, card_id=?, txn_type=?, notes=?, person=?, cashback=? "
-            "WHERE id=?",
-            (txn_date, description, round(amount, 2), category, card_id, txn_type, notes, person, cashback, txn_id)
+            "WHERE id=? AND user_id=?",
+            (txn_date, description, round(amount, 2), category, card_id, txn_type, notes, person, cashback, txn_id, user_id)
         )
         conn.commit()
         conn.close()
@@ -993,8 +1001,8 @@ def edit_transaction(txn_id):
 
     # GET — show edit form
     txn = conn.execute(
-        "SELECT id, date, description, amount, category, card_id, txn_type, notes, person, cashback FROM transactions WHERE id = ?",
-        (txn_id,)
+        "SELECT id, date, description, amount, category, card_id, txn_type, notes, person, cashback FROM transactions WHERE id = ? AND user_id = ?",
+        (txn_id, user_id)
     ).fetchone()
     conn.close()
 
@@ -1004,8 +1012,6 @@ def edit_transaction(txn_id):
 
     cards = get_user_cards(user_id)
     persons = [p["name"] for p in get_user_people(user_id)]
-    if display_name and display_name not in persons:
-        persons.insert(0, display_name)
     return render_template("edit.html",
                          txn=txn,
                          cards=cards,
@@ -1015,12 +1021,11 @@ def edit_transaction(txn_id):
 
 
 @app.route("/api/stats")
-
 @login_required
 def api_stats():
     """JSON API for stats (handy for external use)."""
 
-    person = session.get("display_name", "")
+    user_id = session["user_id"]
     today = date.today()
     year = today.year
     month = today.month
@@ -1030,31 +1035,31 @@ def api_stats():
     # Daily
     day_txns = conn.execute(
         "SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM transactions "
-        "WHERE date = ? AND txn_type = 'debit'",
-        (today.strftime("%Y-%m-%d"),)
+        "WHERE date = ? AND txn_type = 'debit' AND user_id = ?",
+        (today.strftime("%Y-%m-%d"), user_id,)
     ).fetchone()
 
     # Monthly
     month_txns = conn.execute(
         "SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM transactions "
-        "WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND txn_type = 'debit'",
-        (str(year), f"{month:02d}")
+        "WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND txn_type = 'debit' AND user_id = ?",
+        (str(year), f"{month:02d}", user_id,)
     ).fetchone()
 
     # By category this month
     cat_rows = conn.execute(
         "SELECT category, COUNT(*) as count, SUM(amount) as total FROM transactions "
-        "WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND txn_type = 'debit' "
+        "WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND txn_type = 'debit' AND user_id = ? "
         "GROUP BY category ORDER BY total DESC",
-        (str(year), f"{month:02d}")
+        (str(year), f"{month:02d}", user_id,)
     ).fetchall()
 
     # By card this month
     card_rows = conn.execute(
         "SELECT card_id, COUNT(*) as count, SUM(amount) as total FROM transactions "
-        "WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND txn_type = 'debit' "
+        "WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND txn_type = 'debit' AND user_id = ? "
         "GROUP BY card_id ORDER BY total DESC",
-        (str(year), f"{month:02d}")
+        (str(year), f"{month:02d}", user_id,)
     ).fetchall()
 
     conn.close()
@@ -1073,22 +1078,22 @@ def api_stats():
 def settings():
     """Manage cards, categories, and people."""
 
-    person = session.get("display_name", "")
     user_id = session["user_id"]
     cards = get_user_cards(user_id)
     categories = load_categories()
     people = [{"name": p["name"]} for p in get_user_people(user_id)]
 
-    # Get balances for each person
+    # Get balances for each person the user has transactions with (excluding self)
     conn = get_db()
-    balance_rows = conn.execute("""
+    display_name = session.get("display_name", "")
+    balance_rows = conn.execute("""\
         SELECT person,
                COALESCE(SUM(CASE WHEN txn_type='debit' THEN amount ELSE 0 END), 0) as total_debit,
                COALESCE(SUM(CASE WHEN txn_type='credit' THEN amount ELSE 0 END), 0) as total_credit
         FROM transactions
-        WHERE person IS NOT NULL AND person != '' AND person = ?
+        WHERE user_id = ? AND person IS NOT NULL AND person != '' AND person != ?
         GROUP BY person
-    """, (person,)).fetchall()
+    """, (user_id, display_name)).fetchall()
     conn.close()
     balance_map = {}
     for r in balance_rows:
@@ -1160,12 +1165,12 @@ def settings():
             name = request.form["person_name"]
             # Check if person has pending balance
             conn = get_db()
-            balance_row = conn.execute("""
+            balance_row = conn.execute("""\
                 SELECT COALESCE(SUM(CASE WHEN txn_type='debit' THEN amount ELSE 0 END), 0) as total_debit,
                        COALESCE(SUM(CASE WHEN txn_type='credit' THEN amount ELSE 0 END), 0) as total_credit
                 FROM transactions
-                WHERE person = ?
-            """, (name,)).fetchone()
+                WHERE user_id = ? AND person = ?
+            """, (user_id, name)).fetchone()
             conn.close()
             total_debit = balance_row["total_debit"] if balance_row else 0
             total_credit = balance_row["total_credit"] if balance_row else 0
@@ -1226,15 +1231,15 @@ def change_password():
 def cashback_page():
     """Cashback dashboard — per-card, per-month breakdown."""
 
-    person = session.get("display_name", "")
+    user_id = session["user_id"]
     today = date.today()
 
     conn = get_db()
     rows = conn.execute(
         "SELECT id, date, description, amount, category, card_id, txn_type, cashback "
-        "FROM transactions WHERE cashback > 0 AND person = ? "
+        "FROM transactions WHERE cashback > 0 AND user_id = ? "
         "ORDER BY date DESC, id DESC",
-        (person,)
+        (user_id,)
     ).fetchall()
     conn.close()
 
@@ -1332,7 +1337,7 @@ def backup_download():
 def balances():
     """View and edit monthly start/end bank balances."""
 
-    person = session.get("display_name", "")
+    user_id = session["user_id"]
     conn = get_db()
     year = date.today().year
 
@@ -1362,7 +1367,7 @@ def balances():
 
     # Build month data with computed net change
     months_data = []
-    monthly_totals = get_monthly_totals(person)
+    monthly_totals = get_monthly_totals(user_id)
 
     for m in range(1, 13):
         month_key = f"{year}-{m:02d}"
@@ -1389,19 +1394,19 @@ def balances():
     return render_template("balances.html", months=months_data, year=year)
 
 
-def get_monthly_totals(person=""):
+def get_monthly_totals(user_id=None):
     """Get total debit/credit per month from transactions."""
     conn = get_db()
-    rows = conn.execute("""
+    rows = conn.execute("""\
         SELECT 
             substr(date, 1, 7) as month,
             SUM(CASE WHEN txn_type='debit' THEN amount ELSE 0 END) as total_debit,
             SUM(CASE WHEN txn_type='credit' THEN amount ELSE 0 END) as total_credit
         FROM transactions
-        WHERE date IS NOT NULL
+        WHERE user_id = ?
         GROUP BY month
         ORDER BY month
-    """).fetchall()
+    """, (user_id,)).fetchall()
     conn.close()
     return {r["month"]: {"debit": r["total_debit"], "credit": r["total_credit"]} for r in rows}
 
@@ -1412,41 +1417,42 @@ def get_monthly_totals(person=""):
 def people():
     """Track money lent to / borrowed from friends and family."""
 
-    person = session.get("display_name", "")
+    user_id = session["user_id"]
+    display_name = session.get("display_name", "")
     conn = get_db()
     filter_person = request.args.get("person", "").strip()
 
-    # Get all unique persons + their balances
-    people_query = """
+    # Get all unique persons + their balances for this user
+    people_query = """\
         SELECT 
             person,
             SUM(CASE WHEN txn_type='debit' THEN amount ELSE 0 END) as given,
             SUM(CASE WHEN txn_type='credit' THEN amount ELSE 0 END) as received,
             COUNT(*) as count
         FROM transactions 
-        WHERE person != '' AND person IS NOT NULL AND person = ?
+        WHERE user_id = ? AND person != '' AND person IS NOT NULL AND person != ?
         GROUP BY person
         ORDER BY person
     """
-    people_rows = conn.execute(people_query, (person,)).fetchall()
+    people_rows = conn.execute(people_query, (user_id, display_name)).fetchall()
 
     # Get transactions — filtered by person if selected
     if filter_person:
-        recent = conn.execute("""
+        recent = conn.execute("""\
             SELECT id, date, description, amount, category, card_id, txn_type, person, notes
             FROM transactions 
-            WHERE person = ? AND person = ?
+            WHERE user_id = ? AND person = ?
             ORDER BY date DESC, id DESC
             LIMIT 100
-        """, (filter_person, person)).fetchall()
+        """, (user_id, filter_person)).fetchall()
     else:
-        recent = conn.execute("""
+        recent = conn.execute("""\
             SELECT id, date, description, amount, category, card_id, txn_type, person, notes
             FROM transactions 
-            WHERE person != '' AND person IS NOT NULL AND person = ?
+            WHERE user_id = ? AND person != '' AND person IS NOT NULL AND person != ?
             ORDER BY date DESC, id DESC
             LIMIT 50
-        """, (person,)).fetchall()
+        """, (user_id, display_name)).fetchall()
 
     conn.close()
 
@@ -1454,46 +1460,48 @@ def people():
                          filter_person=filter_person, all_people=load_people())
 
 
-@app.route("/sync")
 
-@login_required
-def manual_sync():
-    """Sync Excel → Database (picks up new entries from Excel)."""
 
-    person = session.get("display_name", "")
-    direction, count = smart_sync()
-
-    # Also import balances from Excel
-    try:
-        from excel_sync import _read_balances_from_excel, EXCEL_PATH as _excel_path
-        import openpyxl
-        if _excel_path.exists():
-            wb = openpyxl.load_workbook(str(_excel_path), data_only=True)
-            excel_balances = _read_balances_from_excel(wb)
-            wb.close()
-            conn = get_db()
-            for m_key, vals in excel_balances.items():
-                if vals["start"] or vals["end"]:
-                    conn.execute("""
-                        INSERT INTO monthly_balances (month, start_balance, end_balance)
-                        VALUES (?, ?, ?)
-                        ON CONFLICT(month) DO UPDATE SET
-                            start_balance=excluded.start_balance,
-                            end_balance=excluded.end_balance,
-                            updated_at=datetime('now','localtime')
-                    """, (m_key, vals["start"], vals["end"]))
-            conn.commit()
-            conn.close()
-    except Exception as e:
-        print(f"⚠️ Balance import error: {e}")
-
-    if direction == "excel_to_db":
-        flash(f"📥 Synced: Excel → Website ({count} transactions imported)", "info")
-    elif direction == "db_to_excel":
-        flash(f"📤 Synced: Website → Excel ({count} transactions exported)", "info")
-    else:
-        flash(f"✅ Already in sync", "success")
-    return redirect(request.referrer or url_for("index"))
+#@app.route("/sync")
+#
+#@login_required
+#def manual_sync():
+#    \"\"\"Sync Excel → Database (picks up new entries from Excel).\"\"\"
+#
+#    person = session.get(\"display_name\", \"\")
+#    direction, count = smart_sync()
+#
+#    # Also import balances from Excel
+#    try:
+#        from excel_sync import _read_balances_from_excel, EXCEL_PATH as _excel_path
+#        import openpyxl
+#        if _excel_path.exists():
+#            wb = openpyxl.load_workbook(str(_excel_path), data_only=True)
+#            excel_balances = _read_balances_from_excel(wb)
+#            wb.close()
+#            conn = get_db()
+#            for m_key, vals in excel_balances.items():
+#                if vals[\"start\"] or vals[\"end\"]:
+#                    conn.execute(\"\"\"
+#                        INSERT INTO monthly_balances (month, start_balance, end_balance)
+#                        VALUES (?, ?, ?)
+#                        ON CONFLICT(month) DO UPDATE SET
+#                            start_balance=excluded.start_balance,
+#                            end_balance=excluded.end_balance,
+#                            updated_at=datetime('now','localtime')
+#                    \"\"\", (m_key, vals[\"start\"], vals[\"end\"]))
+#            conn.commit()
+#            conn.close()
+#    except Exception as e:
+#        print(f\"⚠️ Balance import error: {e}\")
+#
+#    if direction == \"excel_to_db\":
+#        flash(f\"📥 Synced: Excel → Website ({count} transactions imported)\", \"info\")
+#    elif direction == \"db_to_excel\":
+#        flash(f\"📤 Synced: Website → Excel ({count} transactions exported)\", \"info\")
+#    else:
+#        flash(f\"✅ Already in sync\", \"success\")
+#    return redirect(request.referrer or url_for(\"index\"))
 
 
 # ─── All Transactions Page ─────────────────────────────────────────────────────
@@ -1503,7 +1511,6 @@ def manual_sync():
 def all_transactions():
     """Paginated, sortable, filterable list of all transactions."""
 
-    person = session.get("display_name", "")
     user_id = session["user_id"]
     page = int(request.args.get("page", 1))
     per_page = 50
@@ -1519,8 +1526,8 @@ def all_transactions():
     filter_to = request.args.get("to", "")
 
     conn = get_db()
-    where_clauses = []
-    params = []
+    where_clauses = ["user_id = ?"]
+    params = [user_id]
 
     if filter_cat:
         where_clauses.append("category = ?")
@@ -1541,7 +1548,7 @@ def all_transactions():
         where_clauses.append("date <= ?")
         params.append(filter_to)
 
-    where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    where_sql = " WHERE " + " AND ".join(where_clauses)
 
     allowed_sorts = {"date": "date", "amount": "amount", "description": "description", "id": "id"}
     sort_col = allowed_sorts.get(sort_by, "date")
