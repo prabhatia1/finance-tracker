@@ -46,159 +46,128 @@
 
 <!-- Today's & Recent Transactions -->
 <div class="row g-3">
-    <!-- Today's -->
     <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-clock text-blue"></i> Today</span>
-                <div class="d-flex gap-2 align-items-center">
-                    <small class="text-secondary-custom">{{ daily.date }}</small>
-                    <a href="/?sort_today={% if sort_today == 'amount' %}id{% else %}amount{% endif %}&page_today={{ page_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn btn-sm btn-outline-light py-0 px-1" title="Sort today">
-                        <i class="bi bi-arrow-down-up"></i> {% if sort_today == 'amount' %}Latest{% else %}Amount{% endif %}
-                    </a>
-                </div>
-            </div>
-            {% if daily.transactions %}
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th>Amount</th>
-                            <th class="d-none d-sm-table-cell">Card</th>
-                            <th style="width:65px"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for txn in daily.transactions %}
-                        <tr>
-                            <td>
-                                <div class="fw-semibold" style="font-size:0.82rem">{{ txn.description[:30] }}{% if txn.description|length > 30 %}...{% endif %}</div>
-                                <span class="badge-cat bg-blue">{{ txn.category }}</span>
-                            </td>
-                            <td>
-                                <span class="{% if txn.txn_type == 'debit' %}text-red{% else %}text-green{% endif %} fw-semibold">
-                                    {% if txn.txn_type == 'debit' %}-{% else %}+{% endif %}₹{{ "%.0f"|format(txn.amount) }}
-                                </span>
-                            </td>
-                            <td class="d-none d-sm-table-cell"><small class="text-secondary-custom">{{ txn.card_id }}</small></td>
-                            <td class="text-end">
-                                <div class="d-flex gap-1 justify-content-end">
-                                    <a href="/edit/{{ txn.id }}" class="btn btn-sm btn-outline-warning border-0 px-1"><i class="bi bi-pencil"></i></a>
-                                    <form method="POST" action="/delete/{{ txn.id }}" style="display:inline" onsubmit="return confirm('Delete?')">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 px-1"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center py-4 text-secondary-custom">
-                <i class="bi bi-inbox" style="font-size:1.8rem"></i>
-                <p class="mt-1 mb-0">No transactions today</p>
-                <a href="/add" class="btn btn-sm btn-success mt-2">Add one</a>
-            </div>
-            {% endif %}
-            {% if today_pages > 1 %}
-            <div class="card-footer d-flex justify-content-between align-items-center py-2">
-                <small class="text-secondary-custom">Page {{ page_today }} of {{ today_pages }}</small>
-                <div class="btn-group btn-group-sm">
-                    {% if page_today > 1 %}
-                    <a href="/?page_today={{ page_today - 1 }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn btn-outline-light">&laquo;</a>
-                    {% endif %}
-                    {% for p in range(1, today_pages + 1) %}
-                    <a href="/?page_today={{ p }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn {% if p == page_today %}btn-light{% else %}btn-outline-light{% endif %}">{{ p }}</a>
-                    {% endfor %}
-                    {% if page_today < today_pages %}
-                    <a href="/?page_today={{ page_today + 1 }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn btn-outline-light">&raquo;</a>
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
+        <div id="today-section">
+            {% include "_today_section.html" %}
         </div>
     </div>
-
-    <!-- Recent -->
     <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-list-ul text-orange"></i> Recent</span>
-                <div class="d-flex gap-2 align-items-center">
-                    <a href="/?sort={% if sort_by == 'id' %}date{% elif sort_by == 'date' %}amount{% else %}id{% endif %}&page_recent={{ page_recent }}&page_today={{ page_today }}" class="btn btn-sm btn-outline-light py-0 px-1">
-                        <i class="bi bi-arrow-down-up"></i> {% if sort_by == 'id' %}By Date{% elif sort_by == 'date' %}By Amount{% else %}Newest{% endif %}
-                    </a>
-                    <a href="/transactions" class="btn btn-sm btn-outline-light py-0 px-1">View All</a>
-                </div>
-            </div>
-            {% if recent %}
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th>Amount</th>
-                            <th class="d-none d-sm-table-cell">Card</th>
-                            <th class="d-none d-sm-table-cell text-end">CB</th>
-                            <th style="width:35px"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for txn in recent %}
-                        <tr>
-                            <td><small class="text-secondary-custom">{{ txn.date[-5:] }}</small></td>
-                            <td>
-                                <div class="fw-semibold" style="font-size:0.82rem">{{ txn.description[:25] }}{% if txn.description|length > 25 %}...{% endif %}</div>
-                                <span class="badge-cat bg-blue">{{ txn.category }}</span>
-                            </td>
-                            <td>
-                                <span class="{% if txn.txn_type == 'debit' %}text-red{% else %}text-green{% endif %} fw-semibold">
-                                    ₹{{ "%.0f"|format(txn.amount) }}
-                                </span>
-                            </td>
-                            <td class="d-none d-sm-table-cell"><small class="text-secondary-custom">{{ txn.card_id }}</small></td>
-                            <td class="d-none d-sm-table-cell text-end">
-                                {% if txn.cashback and txn.cashback > 0 %}
-                                <small class="text-green fw-semibold">+₹{{ "%.0f"|format(txn.cashback) }}</small>
-                                {% else %}
-                                <small class="text-secondary-custom">—</small>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="/edit/{{ txn.id }}" class="btn btn-sm btn-outline-warning border-0 px-1"><i class="bi bi-pencil"></i></a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center py-4 text-secondary-custom">
-                <i class="bi bi-database" style="font-size:1.8rem"></i>
-                <p class="mt-1 mb-0">No transactions yet</p>
-            </div>
-            {% endif %}
-            {% if recent_pages > 1 %}
-            <div class="card-footer d-flex justify-content-between align-items-center py-2">
-                <small class="text-secondary-custom">Page {{ page_recent }} of {{ recent_pages }}</small>
-                <div class="btn-group btn-group-sm">
-                    {% if page_recent > 1 %}
-                    <a href="/?page_recent={{ page_recent - 1 }}&sort={{ sort_by }}&page_today={{ page_today }}" class="btn btn-outline-light">&laquo;</a>
-                    {% endif %}
-                    {% for p in range(1, recent_pages + 1) %}
-                    <a href="/?page_recent={{ p }}&sort={{ sort_by }}&page_today={{ page_today }}" class="btn {% if p == page_recent %}btn-light{% else %}btn-outline-light{% endif %}">{{ p }}</a>
-                    {% endfor %}
-                    {% if page_recent < recent_pages %}
-                    <a href="/?page_recent={{ page_recent + 1 }}&sort={{ sort_by }}&page_today={{ page_today }}" class="btn btn-outline-light">&raquo;</a>
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
+        <div id="recent-section">
+            {% include "_recent_section.html" %}
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    // ─── Today section: AJAX pagination + sort ──────────────────────────────
+    const todaySection = document.getElementById('today-section');
+    const recentSection = document.getElementById('recent-section');
+
+    function todayUrl(page, sort) {
+        const p = new URLSearchParams(window.location.search);
+        if (page) p.set('page_today', page); else p.delete('page_today');
+        if (sort) p.set('sort_today', sort); else p.delete('sort_today');
+        p.set('ajax_today', '1');
+        return '/?' + p.toString();
+    }
+
+    function recentUrl(page, sort) {
+        const p = new URLSearchParams(window.location.search);
+        if (page) p.set('page_recent', page); else p.delete('page_recent');
+        if (sort) p.set('sort', sort); else p.delete('sort');
+        p.set('ajax_recent', '1');
+        return '/?' + p.toString();
+    }
+
+    function refreshToday(page, sort) {
+        fetch(todayUrl(page, sort)).then(r => r.text()).then(html => {
+            todaySection.innerHTML = html;
+            bindToday();
+            updateUrl();
+        });
+    }
+
+    function refreshRecent(page, sort) {
+        fetch(recentUrl(page, sort)).then(r => r.text()).then(html => {
+            recentSection.innerHTML = html;
+            bindRecent();
+            updateUrl();
+        });
+    }
+
+    function updateUrl() {
+        const p = new URLSearchParams(window.location.search);
+        p.delete('ajax_today');
+        p.delete('ajax_recent');
+        const qs = p.toString();
+        window.history.replaceState({}, '', qs ? '/?' + qs : '/');
+    }
+
+    let todayPaginating = false;
+    function todayPaginate(e) {
+        const link = e.target.closest('a');
+        if (!link) return;
+        if (todayPaginating) { todayPaginating = false; return; }
+        e.preventDefault();
+        if (e.type === 'touchstart') todayPaginating = true;
+        const u = new URL(link.getAttribute('href'), window.location.origin);
+        refreshToday(u.searchParams.get('page_today') || 1, null);
+    }
+
+    function bindToday() {
+        const tp = document.getElementById('today-pagination');
+        if (tp) {
+            tp.removeEventListener('click', todayPaginate);
+            tp.removeEventListener('touchstart', todayPaginate);
+            tp.addEventListener('click', todayPaginate);
+            tp.addEventListener('touchstart', todayPaginate);
+        }
+        const srt = todaySection.querySelector('.sort-today-btn');
+        if (srt) {
+            srt.addEventListener('click', function(e) {
+                e.preventDefault();
+                const u = new URL(this.getAttribute('href'), window.location.origin);
+                refreshToday(u.searchParams.get('page_today') || 1, u.searchParams.get('sort_today'));
+            });
+        }
+    }
+
+    let recentPaginating = false;
+    function recentPaginate(e) {
+        const link = e.target.closest('a');
+        if (!link) return;
+        if (recentPaginating) { recentPaginating = false; return; }
+        // Ignore "View All" link — let it navigate normally
+        if (link.textContent.trim() === 'View All') return;
+        e.preventDefault();
+        if (e.type === 'touchstart') recentPaginating = true;
+        const u = new URL(link.getAttribute('href'), window.location.origin);
+        refreshRecent(u.searchParams.get('page_recent') || 1, null);
+    }
+
+    function bindRecent() {
+        const rp = document.getElementById('recent-pagination');
+        if (rp) {
+            rp.removeEventListener('click', recentPaginate);
+            rp.removeEventListener('touchstart', recentPaginate);
+            rp.addEventListener('click', recentPaginate);
+            rp.addEventListener('touchstart', recentPaginate);
+        }
+        const srr = recentSection.querySelector('.sort-recent-btn');
+        if (srr) {
+            srr.addEventListener('click', function(e) {
+                e.preventDefault();
+                const u = new URL(this.getAttribute('href'), window.location.origin);
+                refreshRecent(u.searchParams.get('page_recent') || 1, u.searchParams.get('sort'));
+            });
+        }
+    }
+
+    // Init
+    bindToday();
+    bindRecent();
+})();
+</script>
 
 {% endblock %}

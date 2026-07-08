@@ -1,0 +1,71 @@
+<div class="card" id="today-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock text-blue"></i> Today</span>
+        <div class="d-flex gap-2 align-items-center">
+            <small class="text-secondary-custom">{{ daily.date }}</small>
+            <a href="/?sort_today={% if sort_today == 'amount' %}id{% else %}amount{% endif %}&page_today={{ page_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn btn-sm btn-outline-light py-0 px-1 sort-today-btn" title="Sort today">
+                <i class="bi bi-arrow-down-up"></i> {% if sort_today == 'amount' %}Latest{% else %}Amount{% endif %}
+            </a>
+        </div>
+    </div>
+    {% if daily.transactions %}
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th class="d-none d-sm-table-cell">Card</th>
+                    <th style="width:65px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for txn in daily.transactions %}
+                <tr>
+                    <td>
+                        <div class="fw-semibold" style="font-size:0.82rem">{{ txn.description[:30] }}{% if txn.description|length > 30 %}...{% endif %}</div>
+                        <span class="badge-cat bg-blue">{{ txn.category }}</span>
+                    </td>
+                    <td>
+                        <span class="{% if txn.txn_type == 'debit' %}text-red{% else %}text-green{% endif %} fw-semibold">
+                            {% if txn.txn_type == 'debit' %}-{% else %}+{% endif %}₹{{ "%.0f"|format(txn.amount) }}
+                        </span>
+                    </td>
+                    <td class="d-none d-sm-table-cell"><small class="text-secondary-custom">{{ txn.card_id }}</small></td>
+                    <td class="text-end">
+                        <div class="d-flex gap-1 justify-content-end">
+                            <a href="/edit/{{ txn.id }}" class="btn btn-sm btn-outline-warning border-0 px-1"><i class="bi bi-pencil"></i></a>
+                            <form method="POST" action="/delete/{{ txn.id }}" style="display:inline" onsubmit="return confirm('Delete?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger border-0 px-1"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-4 text-secondary-custom">
+        <i class="bi bi-inbox" style="font-size:1.8rem"></i>
+        <p class="mt-1 mb-0">No transactions today</p>
+        <a href="/add" class="btn btn-sm btn-success mt-2">Add one</a>
+    </div>
+    {% endif %}
+    <div id="today-pagination" class="card-footer d-flex justify-content-between align-items-center py-2" style="{% if today_pages <= 1 %}display:none{% endif %}">
+        {% if today_pages > 1 %}
+        <small class="text-secondary-custom">Page {{ page_today }} of {{ today_pages }}</small>
+        <div class="btn-group btn-group-sm">
+            {% if page_today > 1 %}
+            <a href="/?page_today={{ page_today - 1 }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn btn-outline-light">&laquo;</a>
+            {% endif %}
+            {% for p in range(1, today_pages + 1) %}
+            <a href="/?page_today={{ p }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn {% if p == page_today %}btn-light{% else %}btn-outline-light{% endif %}">{{ p }}</a>
+            {% endfor %}
+            {% if page_today < today_pages %}
+            <a href="/?page_today={{ page_today + 1 }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn btn-outline-light">&raquo;</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>

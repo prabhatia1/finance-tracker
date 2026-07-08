@@ -486,6 +486,20 @@ def index():
     cards = load_cards()
     categories = load_categories()
 
+    # ─── AJAX partials ──────────────────────────────────────────────────────
+    ajax_today = request.args.get("ajax_today") == "1"
+    ajax_recent = request.args.get("ajax_recent") == "1"
+    if ajax_today:
+        return render_template("_today_section.html",
+                             daily=daily,
+                             sort_today=sort_today,
+                             page_today=page_today, today_pages=today_pages, today_total=today_total)
+    if ajax_recent:
+        return render_template("_recent_section.html",
+                             recent=recent,
+                             sort_by=sort_by,
+                             page_recent=page_recent, recent_pages=recent_pages, recent_total=recent_total)
+
     return render_template("index.html",
                          daily=daily,
                          recent=recent,
@@ -533,6 +547,11 @@ def add_transaction():
 
         if amount <= 0:
             flash("Amount must be greater than zero!", "danger")
+            persons = get_all_persons()
+            return render_template("add.html", cards=cards, categories=categories, persons=persons)
+
+        if amount > 50_000_000:
+            flash("Amount cannot exceed ₹5 crore!", "danger")
             persons = get_all_persons()
             return render_template("add.html", cards=cards, categories=categories, persons=persons)
 

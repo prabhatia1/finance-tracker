@@ -121,31 +121,38 @@
             .then(data => {
                 tableContainer.innerHTML = data.table_html;
                 paginationContainer.innerHTML = data.pagination_html;
-                tableContainer.querySelectorAll('a[href*="transactions"]').forEach(a => {
-                    a.addEventListener('click', function(e) { e.preventDefault();
-                        const u = new URL(this.href, window.location.origin);
-                        refreshTable(u.searchParams.get('page') || 1);
-                    });
-                });
-                paginationContainer.querySelectorAll('a[href*="transactions"]').forEach(a => {
-                    a.addEventListener('click', function(e) { e.preventDefault();
-                        const u = new URL(this.href, window.location.origin);
-                        refreshTable(u.searchParams.get('page') || 1);
-                    });
-                });
                 const cleanUrl = buildUrl().replace('ajax=1&','').replace('?ajax=1','').replace('&ajax=1','');
                 window.history.replaceState({}, '', cleanUrl);
             });
     }
 
+    // ── Event delegation: intercept pagination clicks forever ──
+    let paginating = false;
+    function handlePaginate(e) {
+        const link = e.target.closest('a[href*="/transactions"]');
+        if (!link) return;
+        if (paginating) { paginating = false; return; }
+        e.preventDefault();
+        if (e.type === 'touchstart') paginating = true;
+        const u = new URL(link.getAttribute('href'), window.location.origin);
+        refreshTable(u.searchParams.get('page') || 1);
+    }
+    paginationContainer.addEventListener('click', handlePaginate);
+    paginationContainer.addEventListener('touchstart', handlePaginate);
+
+    // ── Search as-you-type ──
     let timer;
     document.getElementById('search-input').addEventListener('input', function() {
         clearTimeout(timer);
         timer = setTimeout(() => refreshTable(1), 300);
     });
+
+    // ── Filter dropdown/date changes ──
     document.querySelectorAll('.filter-select, .filter-date').forEach(el => {
         el.addEventListener('change', () => refreshTable(1));
     });
+
+    // ── Form submit ──
     form.addEventListener('submit', function(e) { e.preventDefault(); refreshTable(1); });
 })();
 </script>
