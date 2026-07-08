@@ -38,3 +38,5 @@ instance/
 
 # Windows reserved names
 nul
+backups/
+~$*.xlsx
