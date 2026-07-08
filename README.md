@@ -1,60 +1,63 @@
-# 💸 Finance Tracker — Daily Transaction Manager
+# 💸 Finance Tracker — Personal Expense Manager
 
-A personal finance tracking web app built with **Flask + SQLite** that helps you manage expenses across multiple credit cards, track cashback earnings, and sync everything to Excel for monthly reporting.
+A personal finance tracking web app built with **Flask + SQLite** — track expenses across multiple credit cards, manage cashback, and split costs by person.
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Flask](https://img.shields.io/badge/flask-3.0-green)
-![License](https://img.shields.io/badge/license-MIT-lightgrey)
+![SQLite](https://img.shields.io/badge/database-SQLite-lightgrey)
 
 ---
 
 ## ✨ Features
 
+### 🔐 Multi-User
+- **Registration & Login** — Each user has their own account
+- **Per-user data isolation** — Every transaction belongs to a user; no data leaks between accounts
+- **Display name** — Customizable name shown on dashboard and People pages
+
 ### 📊 Dashboard
-- **Summary cards** — Total spent, balance remaining, cashback earned
-- **Today's transactions** — Quick overview of current day's activity
+- **Summary cards** — Today's Spend, Today's Credits, Monthly Total, Cashback
+- **Today's transactions** — Both debits (`-₹`) and credits (`+₹`) shown
 - **Recent transactions** — Full paginated history with edit/delete actions
-- **Cashback column** — See cashback at a glance on every transaction
+- **Cashback column** — See cashback at a glance on every row
 
 ### 💳 Multi-Card Support
-Manage expenses across any number of credit/debit cards with manual cashback entry:
+Manage expenses across any number of credit/debit cards. Cards configured per-user via the Settings page.
 
-| Card | Nickname |
-|------|----------|
+| Default Card | Nickname |
+|-------------|----------|
 | SBI Cashback | `sbi_cb` |
 | SBI PhonePe | `sbi_pp` |
 | HDFC Millennia | `hdfc_mil` |
 | HDFC Swiggy | `hdfc_swig` |
 | BOB Eterna | `bob_eterna` |
 
-Easily configurable via `cards.json`.
+Add, edit, or remove cards anytime from the Settings page.
 
 ### 💰 Cashback Tracking
-- **Manual entry** — You decide the cashback amount per transaction, no auto-override
+- **Manual entry** — You decide the cashback per transaction
 - **Per-card dashboard** — `/cashback` page breaks down earnings by card
-- **Effective rate** — Automatic rate % calculation based on amount vs cashback
 - **Edit anytime** — Cashback values are fully editable
 
-### 📁 Excel Two-Way Sync
-- **DB → Excel** — Export all transactions to monthly calendar sheets
-- **Excel → DB** — Import transactions from Excel (card assignments preserved)
-- **Smart sync** — Auto-detects which side has more data and syncs in the right direction
-- **Sync button** — One-click sync from the dashboard
-- **Excel-safe** — Warns if Excel is open (file locked)
+### 👥 Person / Split Tracking
+- **Tag beneficiaries** — Mark each transaction as self, or for a specific person (e.g., Sister, Dad)
+- **Self-transactions** — Leave person blank for your own expenses
+- **People page** — Shows balances per person (auto-excludes self)
+- **Add/remove people** — Manage from Settings page
 
 ### 🏷️ Auto-Categorization
 - Descriptions like "Netflix", "Swiggy", "Amazon" auto-assign to categories
-- Machine-learning-free rule-based matching (extensible in `app.py`)
-
-### 👥 Multi-Person Support
-- Tag transactions to family members or friends
-- Filter by person for shared expense tracking
-- Balance tracking per person
+- Rule-based keyword matching using `categories.json`
+- Categories fully customizable from Settings
 
 ### 📈 Reports & Export
-- **Daily/Monthly/Card** views with chart-ready grouped data
-- **CSV Export** — One-click download of all transactions
+- **Daily / Monthly / Card** views with grouped data
+- **CSV Export** — One-click download of all transactions (pratik only)
+- **Monthly Excel Download** — Calendar-format Excel workbook (pratik only)
 - **Pagination** — Browse transaction history page by page
+
+### 📦 Backup & Restore
+- **CLI tool** — `backup_restore.py` for creating and restoring timestamps
 
 ---
 
@@ -68,7 +71,7 @@ Easily configurable via `cards.json`.
 
 ```bash
 # Clone the repo
-git clone https://github.com/tonystark6/finance-tracker.git
+git clone https://github.com/prabhatia1/finance-tracker.git
 cd finance-tracker
 
 # Install dependencies
@@ -82,10 +85,10 @@ Open **http://127.0.0.1:5000** in your browser.
 
 ### First-Run Setup
 
-1. The app auto-creates `finance.db` (SQLite) and `expense_tracker.xlsx` (Excel template)
-2. If you have an existing Excel file, place it in the project folder — it will be detected
-3. Configure your cards in `cards.json` (auto-created if missing)
-4. Click **Sync Excel** on the dashboard to import existing data
+1. Register a new account on the `/register` page
+2. Log in with your credentials
+3. Configure your cards, categories, and people from the Settings page
+4. Start adding transactions!
 
 ---
 
@@ -93,18 +96,20 @@ Open **http://127.0.0.1:5000** in your browser.
 
 ```
 finance-tracker/
-├── app.py              # Flask application — all routes & logic
-├── cashback.py         # Cashback reference rules (labels, rates)
-├── excel_sync.py       # Excel ↔ DB sync engine
-├── cards.json          # Card definitions (names & nicknames)
-├── categories.json     # Auto-categorization rules
-├── requirements.txt    # Python dependencies
-├── .gitignore          # Git ignore rules
-└── README.md           # This file
+├── app.py                 # Flask application — all routes & logic
+├── cashback.py            # Cashback reference rules (labels, rates)
+├── excel_sync.py          # Excel ↔ DB sync engine
+├── backup_restore.py      # Database backup and restore CLI
+├── cards.json             # Card definitions (per-user managed in DB)
+├── categories.json        # Auto-categorization keyword rules
+├── people.json            # Person/beneficiary definitions
+├── requirements.txt       # Python dependencies
+├── .gitignore             # Git ignore rules
+└── README.md              # This file
 
-# Runtime data files (untracked):
-├── finance.db          # SQLite database
-└── expense_tracker.xlsx  # Excel workbook with monthly sheets
+# Runtime data (auto-created, git-ignored):
+├── finance.db             # SQLite database
+└── expense_tracker.xlsx   # Monthly Excel workbook
 ```
 
 ---
@@ -114,17 +119,28 @@ finance-tracker/
 | Page | Route | Description |
 |------|-------|-------------|
 | Dashboard | `/` | Summary stats, today's & recent transactions |
-| Add Transaction | `/add` | New expense entry with cashback |
+| Add Transaction | `/add` | New expense entry with cashback & person tag |
 | Edit Transaction | `/edit/<id>` | Modify existing transaction |
-| Cashback Dashboard | `/cashback` | Per-card cashback breakdown |
-| Reports | `/reports/<view>` | Daily, monthly, card-wise views |
-| Settings | `/settings` | Manage cards & categories |
-| People | `/people` | Multi-person tracking |
-| Balances | `/balances` | Person-wise balances |
+| All Transactions | `/transactions` | Full paginated transaction history |
+| Reports | `/reports` | Daily, monthly, card-wise views |
+| Cashback | `/cashback` | Per-card cashback breakdown |
+| People | `/people` | Person-wise balances |
+| Balances | `/balances` | Monthly balance report |
+| Settings | `/settings` | Manage cards, categories, people, password |
 
 ---
 
 ## 🔧 Configuration
+
+### Categories (`categories.json`)
+```json
+{
+  "categories": [
+    {"name": "Electricity Bill", "keywords": ["electricity", "msedcl", "torrent"], "type": "bill"},
+    {"name": "Groceries", "keywords": ["grocery", "blinkit", "zepto", "dmart"], "type": "daily"}
+  ]
+}
+```
 
 ### Cards (`cards.json`)
 ```json
@@ -136,41 +152,20 @@ finance-tracker/
 }
 ```
 
-### Cashback Reference (`cashback.py`)
-The `cashback.py` module contains reference labels and effective rates for display purposes. Actual cashback values are user-entered per transaction — the app never auto-calculates or overrides your input.
+> Cards and categories are also editable from the Settings page — no need to hand-edit JSON.
 
 ---
 
-## 📄 Excel Sheet Format
+## 📄 Backup & Restore
 
-The app creates month-named sheets (April, May, June...) with:
-- **Row 1**: Month header
-- **Row 3**: Income row (green)
-- **Row 5**: Day numbers (1–31)
-- **Row 6+**: Category rows with daily amounts in day columns
-- **Column B**: Category names
-- **Last columns**: Totals, cashback tracking
-
-> ⚠️ Keep Excel closed when using the Sync button — open files are locked and can't be written.
-
----
-
-## 🐛 Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| **"Excel could not be updated"** | Close Excel and click Sync again |
-| **Cashback not showing** | Ensure you entered it on the Add/Edit form — it's manual |
-| **404 on routes** | You may be running an older version; refresh the page |
-| **Port 5000 in use** | Change the port in app.py or kill the other process |
-
----
-
-## 📦 Backup
-
-Run from the project directory to create a timestamped backup:
+Create a timestamped backup:
 ```bash
-python -c "import shutil; shutil.make_archive('backup', 'zip', '.')"
+python backup_restore.py backup
+```
+
+Restore from a backup file:
+```bash
+python backup_restore.py restore backup_20260709_120000.db
 ```
 
 ---
