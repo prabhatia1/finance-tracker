@@ -155,7 +155,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 def login():
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
+        username = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "")
         conn = get_db()
         user = conn.execute(
@@ -176,7 +176,7 @@ def login():
 
 def register():
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
+        username = request.form.get("username", "").strip().lower()
         display_name = request.form.get("display_name", "").strip()
         password = request.form.get("password", "")
         confirm = request.form.get("confirm", "")
@@ -1078,6 +1078,41 @@ def settings():
         return redirect(url_for("settings"))
 
     return render_template("settings.html", cards=cards, categories=categories, people=people, balance_map=balance_map)
+
+
+@app.route("/change-password", methods=["POST"])
+@login_required
+def change_password():
+    """Change the logged-in user's password."""
+    current = request.form.get("current_password", "")
+    new_pw = request.form.get("new_password", "")
+    confirm = request.form.get("confirm_password", "")
+
+    if not current or not new_pw or not confirm:
+        flash("All fields are required.", "danger")
+        return redirect(url_for("settings"))
+
+    if new_pw != confirm:
+        flash("New passwords don't match.", "danger")
+        return redirect(url_for("settings"))
+
+    if len(new_pw) < 4:
+        flash("Password must be at least 4 characters.", "danger")
+        return redirect(url_for("settings"))
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    if not user or not check_password_hash(user["password_hash"], current):
+        conn.close()
+        flash("Current password is incorrect.", "danger")
+        return redirect(url_for("settings"))
+
+    new_hash = generate_password_hash(new_pw)
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, session["user_id"]))
+    conn.commit()
+    conn.close()
+    flash("✅ Password changed successfully!", "success")
+    return redirect(url_for("settings"))
 
 
 @app.route("/cashback")
