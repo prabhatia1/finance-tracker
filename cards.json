@@ -1,0 +1,10 @@
+{
+  "cards": [
+    {"id": "sbi_cb", "name": "SBI Cashback", "bank": "SBI", "type": "Visa"},
+    {"id": "sbi_pp", "name": "SBI PhonePe", "bank": "SBI", "type": "Visa"},
+    {"id": "hdfc_mil", "name": "HDFC Millennia", "bank": "HDFC", "type": "Visa"},
+    {"id": "hdfc_swig", "name": "HDFC Swiggy", "bank": "HDFC", "type": "Visa"},
+    {"id": "bob_eterna", "name": "BOB Eterna", "bank": "BOB", "type": "RuPay"},
+    {"id": "other", "name": "Other Card", "bank": "Other", "type": "Other"}
+  ]
+}

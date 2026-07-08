@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-cash-coin text-success"></i> Cashback Dashboard</h4>
+    <span class="badge bg-success fs-6 px-3 py-2">
+        Total Earned: <strong>₹{{ "%.2f"|format(total_cb) }}</strong>
+    </span>
+</div>
+
+<!-- Cashback per Card Summary -->
+<div class="row g-3 mb-4">
+    {% for cid, data in card_totals.items() %}
+    <div class="col-md-4 col-lg-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="stat-label">{{ data.label or cid }}</span>
+                <span class="badge bg-success-subtle text-success">{{ data.count }} txns</span>
+            </div>
+            <div class="stat-value text-success">₹{{ "%.2f"|format(data.total_cb) }}</div>
+        </div>
+    </div>
+    {% endfor %}
+    {% if not card_totals %}
+    <div class="col-12">
+        <div class="stat-card text-center py-4">
+            <i class="bi bi-cash-stack fs-1 text-muted"></i>
+            <p class="mt-2 text-muted">No cashback-earning transactions yet. Add transactions with a card selected to see cashback estimates.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Cashback-Earning Transactions Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul"></i> Cashback-Earning Transactions</span>
+        <span class="text-muted small">{{ cb_transactions|length }} item(s)</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Card</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-end">Cashback</th>
+                        <th class="text-end">Effective Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in cb_transactions %}
+                    <tr>
+                        <td class="text-nowrap">{{ t.date }}</td>
+                        <td>
+                            <a href="{{ url_for('edit_transaction', txn_id=t.id) }}" class="text-decoration-none text-light">
+                                {{ t.description }}
+                            </a>
+                        </td>
+                        <td><span class="badge badge-category bg-blue">{{ t.category }}</span></td>
+                        <td><code>{{ t.card_id or 'other' }}</code></td>
+                        <td class="text-end text-danger">₹{{ "%.2f"|format(t.amount) }}</td>
+                        <td class="text-end text-success fw-semibold">+₹{{ "%.2f"|format(t.cashback) }}</td>
+                        <td class="text-end text-muted">
+                            {% if t.amount > 0 %}
+                            {{ "%.1f"|format(t.cashback / t.amount * 100) }}%
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not cb_transactions %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            No cashback data yet.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Report Navigation -->
+<div class="card mb-4">
+    <div class="card-body d-flex flex-wrap gap-3 align-items-center">
+        <!-- Date picker for daily -->
+        <div class="d-flex align-items-center gap-2">
+            <label class="form-label mb-0 text-nowrap">Daily:</label>
+            <input type="date" class="form-control form-control-sm" id="dayPicker" value="{{ selected_day }}"
+                   style="width:160px"
+                   onchange="window.location.href='?day='+this.value+'&year={{ selected_year }}&month={{ selected_month }}'">
+        </div>
+
+        <!-- Month picker for monthly -->
+        <div class="d-flex align-items-center gap-2">
+            <label class="form-label mb-0 text-nowrap">Month:</label>
+            <select class="form-select form-select-sm" style="width:auto" id="monthPicker"
+                    onchange="updateUrl()">
+                {% for m in range(1, 13) %}
+                <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ datetime(2000, m, 1).strftime('%B') }}</option>
+                {% endfor %}
+            </select>
+            <select class="form-select form-select-sm" style="width:auto" id="yearPicker"
+                    onchange="updateUrl()">
+                {% for y in range(2025, 2031) %}
+                <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Card filter -->
+        <div class="d-flex align-items-center gap-2">
+            <label class="form-label mb-0 text-nowrap">Card:</label>
+            <select class="form-select form-select-sm" style="width:auto" id="cardPicker"
+                    onchange="updateUrl()">
+                <option value="">All Cards</option>
+                {% for card in cards %}
+                <option value="{{ card.id }}" {% if card.id == selected_card %}selected{% endif %}>{{ card.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="ms-auto">
+            <a href="/export/monthly?year={{ selected_year }}&month={{ selected_month }}" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-download"></i> Export Month
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== DAILY REPORT ===================== -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar-day text-blue"></i> Daily Summary — {{ daily.date }}</span>
+        <span class="badge {% if daily.total_debit > 0 %}bg-danger{% else %}bg-success{% endif %}">
+            ₹{{ "%.2f"|format(daily.total_debit) }} spent
+        </span>
+    </div>
+    <div class="card-body p-0">
+        {% if daily.transactions %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Card</th>
+                        <th>Amount</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for txn in daily.transactions %}
+                    <tr>
+                        <td><small class="text-muted">{{ loop.index }}</small></td>
+                        <td>{{ txn.description }}</td>
+                        <td><span class="badge badge-category bg-blue">{{ txn.category }}</span></td>
+                        <td><small class="text-muted">{{ txn.card_id }}</small></td>
+                        <td>
+                            <span class="{% if txn.txn_type == 'debit' %}text-red{% else %}text-green{% endif %} fw-semibold">
+                                {% if txn.txn_type == 'debit' %}-{% else %}+{% endif %}₹{{ "%.2f"|format(txn.amount) }}
+                            </span>
+                        </td>
+                        <td>
+                            <form method="POST" action="/delete/{{ txn.id }}" style="display:inline"
+                                  onsubmit="return confirm('Delete?')">
+                                <button class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-x"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-calendar-x" style="font-size:2rem"></i>
+            <p class="mt-1">No transactions on this day</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- ===================== MONTHLY REPORT (Category) ===================== -->
+    <div class="col-lg-7">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-pie-chart text-orange"></i> {{ monthly.month_name }} {{ monthly.year }} — Category Breakdown</span>
+                <span class="text-muted small">{{ monthly.transaction_count }} txn{{ 's' if monthly.transaction_count != 1 else '' }} · ₹{{ "%.2f"|format(monthly.total_spend) }} total</span>
+            </div>
+            <div class="card-body p-0">
+                {% if monthly.cat_totals %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>%</th>
+                                <th>Progress</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set max_cat_amount = monthly.cat_totals.values()|first if monthly.cat_totals else 1 %}
+                            {% for cat_name, cat_total in monthly.cat_totals.items() %}
+                            {% set pct = (cat_total / monthly.total_spend * 100) if monthly.total_spend > 0 else 0 %}
+                            {% set bar_pct = (cat_total / max_cat_amount * 100) if max_cat_amount > 0 else 0 %}
+                            {% set colors = ['#448aff', '#00c853', '#ff9100', '#ff5252', '#aa00ff', '#00bcd4', '#ff4081', '#76ff03'] %}
+                            {% set color = colors[loop.index0 % colors|length] %}
+                            <tr>
+                                <td>
+                                    <span class="category-dot" style="background:{{ color }}"></span>
+                                    {{ cat_name }}
+                                </td>
+                                <td class="fw-semibold">₹{{ "%.2f"|format(cat_total) }}</td>
+                                <td><small class="text-muted">{{ "%.1f"|format(pct) }}%</small></td>
+                                <td style="width:30%">
+                                    <div class="progress-bar-container">
+                                        <div class="progress-fill" style="width:{{ bar_pct }}%; background:{{ color }}"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-pie-chart" style="font-size:2rem"></i>
+                    <p class="mt-1">No spending this month</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== CARD-WISE REPORT ===================== -->
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-credit-card text-blue"></i> Card-wise Spending</span>
+                <span class="text-muted small">{{ monthly.month_name }} {{ monthly.year }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if monthly.card_totals %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Card</th>
+                                <th>Txns</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set max_card_amount = monthly.card_totals.values()|first if monthly.card_totals else 1 %}
+                            {% for cid, ctotal in monthly.card_totals.items() %}
+                            {% set display_name = card_map.get(cid, cid) %}
+                            {% set bar_pct = (ctotal / max_card_amount * 100) if max_card_amount > 0 else 0 %}
+                            {% set card_colors = {'sbi_cb': '#448aff', 'sbi_pp': '#00bcd4', 'hdfc_mil': '#ff9100', 'hdfc_swig': '#ff5252', 'bob_eterna': '#aa00ff'} %}
+                            {% set ccolor = card_colors.get(cid, '#76ff03') %}
+                            <tr>
+                                <td>
+                                    <span class="category-dot" style="background:{{ ccolor }}"></span>
+                                    {{ display_name }}
+                                </td>
+                                <td><small class="text-muted">{{ monthly.card_txns[cid]|length }}</small></td>
+                                <td class="fw-semibold">₹{{ "%.2f"|format(ctotal) }}</td>
+                            </tr>
+                            <tr class="no-hover">
+                                <td colspan="3" class="p-0 px-3 pb-2" style="border:none">
+                                    <div class="progress-bar-container">
+                                        <div class="progress-fill" style="width:{{ bar_pct }}%; background:{{ ccolor }}"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-credit-card" style="font-size:2rem"></i>
+                    <p class="mt-1">No card transactions</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent transactions for selected card -->
+        {% if selected_card and card_rpt.transactions %}
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history"></i> {{ card_map.get(selected_card, selected_card) }} — Recent
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for txn in card_rpt.transactions[:10] %}
+                            <tr>
+                                <td><small class="text-muted">{{ txn.date }}</small></td>
+                                <td>
+                                    <div>{{ txn.description[:30] }}{% if txn.description|length > 30 %}...{% endif %}</div>
+                                    <span class="badge badge-category bg-blue" style="font-size:0.65rem">{{ txn.category }}</span>
+                                </td>
+                                <td class="fw-semibold text-red">₹{{ "%.2f"|format(txn.amount) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function updateUrl() {
+    const month = document.getElementById('monthPicker').value;
+    const year = document.getElementById('yearPicker').value;
+    const card = document.getElementById('cardPicker').value;
+    const day = document.getElementById('dayPicker')?.value || '{{ selected_day }}';
+    let url = `?day=${day}&year=${year}&month=${month}`;
+    if (card) url += `&card_id=${card}`;
+    window.location.href = url;
+}
+</script>
+
+{% endblock %}

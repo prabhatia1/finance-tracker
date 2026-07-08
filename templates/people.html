@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-people text-blue"></i> Friends & Family — Balances
+            </div>
+            <div class="card-body p-0">
+                {% if people %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Person</th>
+                                <th>You Paid For Them</th>
+                                <th>They Paid Back</th>
+                                <th>Net Balance</th>
+                                <th>Transactions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in people %}
+                            {% set net = p.given - p.received %}
+                            <tr>
+                                <td><strong>{{ p.person }}</strong></td>
+                                <td class="text-red">₹{{ "%.2f"|format(p.given) }}</td>
+                                <td class="text-green">₹{{ "%.2f"|format(p.received) }}</td>
+                                <td>
+                                    {% if net > 0 %}
+                                    <span class="text-red fw-semibold">You are owed ₹{{ "%.2f"|format(net) }}</span>
+                                    {% elif net < 0 %}
+                                    <span class="text-green fw-semibold">You owe ₹{{ "%.2f"|format(net|abs) }}</span>
+                                    {% else %}
+                                    <span class="text-muted">Settled up ✅</span>
+                                    {% endif %}
+                                </td>
+                                <td><small class="text-muted">{{ p.count }} txn{{ 's' if p.count != 1 else '' }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-people" style="font-size:2rem"></i>
+                    <p class="mt-2">No person-tagged transactions yet</p>
+                    <a href="/add" class="btn btn-sm btn-success">Add one with a person name</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter bar -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <form method="GET" action="/people" class="d-flex gap-2">
+            <select class="form-select" name="person" onchange="this.form.submit()">
+                <option value="">— All People —</option>
+                {% for p in all_people %}
+                <option value="{{ p.name }}" {% if filter_person == p.name %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+            {% if filter_person %}
+            <a href="/people" class="btn btn-outline-light">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="col-md-8 text-end">
+        {% if filter_person %}
+        <span class="text-muted">Showing: <strong>{{ filter_person }}</strong></span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent person transactions -->
+<div class="row g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-ul"></i> Recent Transactions with People</span>
+            </div>
+            <div class="card-body p-0">
+                {% if recent %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Person</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Type</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in recent %}
+                            <tr>
+                                <td><small class="text-muted">{{ t.date }}</small></td>
+                                <td><span class="badge bg-info">{{ t.person }}</span></td>
+                                <td>
+                                    <div>{{ t.description[:35] }}{% if t.description|length > 35 %}...{% endif %}</div>
+                                    <small class="text-muted">{{ t.category }}</small>
+                                </td>
+                                <td>
+                                    <span class="{% if t.txn_type == 'debit' %}text-red{% else %}text-green{% endif %} fw-semibold">
+                                        {% if t.txn_type == 'debit' %}-{% else %}+{% endif %}₹{{ "%.2f"|format(t.amount) }}
+                                    </span>
+                                </td>
+                                <td><small class="text-muted">{{ t.card_id }}</small></td>
+                                <td>
+                                    <a href="/edit/{{ t.id }}" class="btn btn-sm btn-outline-warning border-0"><i class="bi bi-pencil"></i></a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox" style="font-size:2rem"></i>
+                    <p class="mt-2">No person transactions yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>How it works:</strong> When you pay for a friend/family member using your card, add a transaction with their name in the <strong>"Person"</strong> field (debit = you paid for them). When they pay you back, add a credit transaction with their name. The balance shows who owes whom.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

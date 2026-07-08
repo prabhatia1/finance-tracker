@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Quick Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Today's Spend</div>
+                    <div class="stat-value text-red">₹{{ "%.2f"|format(daily.total_debit) }}</div>
+                    <small class="text-muted">{{ daily.transactions|length }} transactions</small>
+                </div>
+                <div class="stat-icon text-red"><i class="bi bi-arrow-up-right-circle"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Today's Credits</div>
+                    <div class="stat-value text-green">₹{{ "%.2f"|format(daily.total_credit) }}</div>
+                </div>
+                <div class="stat-icon text-green"><i class="bi bi-arrow-down-left-circle"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Monthly Spend</div>
+                    <div class="stat-value text-orange">₹{{ "%.2f"|format(monthly_total) }}</div>
+                </div>
+                <div class="stat-icon text-orange"><i class="bi bi-calendar-check"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">💰 Cashback Earned</div>
+                    <div class="stat-value text-success">₹{{ "%.2f"|format(total_cb) }}</div>
+                    <small class="text-muted"><a href="/cashback" class="text-muted">view details →</a></small>
+                </div>
+                <div class="stat-icon text-success"><i class="bi bi-cash-coin"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body d-flex gap-2 flex-wrap">
+                <a href="/add" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Add Transaction
+                </a>
+                <a href="/upload" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> Upload Statement
+                </a>
+                <a href="/reports" class="btn btn-outline-light">
+                    <i class="bi bi-bar-chart"></i> View Reports
+                </a>
+                <a href="/sync" class="btn btn-outline-light">
+                    <i class="bi bi-arrow-repeat"></i> Sync Excel
+                </a>
+                <a href="/open-excel" class="btn btn-outline-success">
+                    <i class="bi bi-file-earmark-excel"></i> Open Excel
+                </a>
+                <a href="/export" class="btn btn-outline-light">
+                    <i class="bi bi-download"></i> Export CSV
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Today's Transactions & Recent Transactions -->
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clock"></i> Today's Transactions</span>
+                <span class="text-muted small">{{ daily.date }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if daily.transactions %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Card</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for txn in daily.transactions %}
+                            <tr>
+                                <td>
+                                    <div>{{ txn.description[:40] }}{% if txn.description|length > 40 %}...{% endif %}</div>
+                                    <small class="text-muted">{{ txn.category }}</small>
+                                </td>
+                                <td>
+                                    <span class="{% if txn.txn_type == 'debit' %}text-red{% else %}text-green{% endif %} fw-semibold">
+                                        {% if txn.txn_type == 'debit' %}-{% else %}+{% endif %}₹{{ "%.2f"|format(txn.amount) }}
+                                    </span>
+                                </td>
+                                <td><small class="text-muted">{{ txn.card_id }}</small></td>
+                                <td>
+                                    <form method="POST" action="/delete/{{ txn.id }}" style="display:inline" onsubmit="return confirm('Delete this transaction?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                    <a href="/edit/{{ txn.id }}" class="btn btn-sm btn-outline-warning border-0"><i class="bi bi-pencil"></i></a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox" style="font-size:2rem"></i>
+                    <p class="mt-2">No transactions today yet</p>
+                    <a href="/add" class="btn btn-sm btn-success">Add one</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-ul"></i> Recent Transactions</span>
+                <a href="/reports" class="btn btn-sm btn-outline-light">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Card</th>
+                                <th class="text-end">Cashback</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for txn in recent %}
+                            <tr>
+                                <td><small class="text-muted">{{ txn.date }}</small></td>
+                                <td>
+                                    <div>{{ txn.description[:35] }}{% if txn.description|length > 35 %}...{% endif %}</div>
+                                    <span class="badge badge-category bg-blue">{{ txn.category }}</span>
+                                </td>
+                                <td>
+                                    <span class="{% if txn.txn_type == 'debit' %}text-red{% else %}text-green{% endif %} fw-semibold">
+                                        ₹{{ "%.2f"|format(txn.amount) }}
+                                    </span>
+                                </td>
+                                <td><small class="text-muted">{{ txn.card_id }}</small></td>
+                                <td class="text-end">
+                                    {% if txn.cashback and txn.cashback > 0 %}
+                                    <span class="text-success fw-semibold">+₹{{ "%.2f"|format(txn.cashback) }}</span>
+                                    {% else %}
+                                    <small class="text-muted">—</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="/edit/{{ txn.id }}" class="btn btn-sm btn-outline-warning border-0"><i class="bi bi-pencil"></i></a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-database" style="font-size:2rem"></i>
+                    <p class="mt-2">No transactions yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

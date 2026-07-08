@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row g-3">
+    <!-- Cards Management -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-credit-card text-blue"></i> Your Cards
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Card</th>
+                                <th>Bank</th>
+                                <th>Type</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for card in cards %}
+                            <tr>
+                                <td class="fw-semibold">{{ card.name }}</td>
+                                <td>{{ card.bank }}</td>
+                                <td><span class="badge badge-category bg-green">{{ card.type }}</span></td>
+                                <td>
+                                    <form method="POST" action="/settings" style="display:inline"
+                                          onsubmit="return confirm('Remove {{ card.name }}?')">
+                                        <input type="hidden" name="action" value="remove_card">
+                                        <input type="hidden" name="card_id" value="{{ card.id }}">
+                                        <button class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-body border-top" style="border-color:var(--card-border)">
+                <form method="POST" action="/settings" class="row g-2">
+                    <input type="hidden" name="action" value="add_card">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control form-control-sm" name="card_id"
+                               placeholder="ID (e.g. hdfc_mil)" required>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control form-control-sm" name="card_name"
+                               placeholder="Name (e.g. HDFC Millennia)" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" class="form-control form-control-sm" name="card_bank"
+                               placeholder="Bank" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-sm btn-success w-100"><i class="bi bi-plus"></i> Add</button>
+                    </div>
+                    <div class="col-md-12">
+                        <input type="text" class="form-control form-control-sm" name="card_type"
+                               placeholder="Type (e.g. Visa, Mastercard, RuPay)">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories Management -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-tags text-orange"></i> Categories & Auto-Tagging Rules
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height:400px">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Keywords</th>
+                                <th>Type</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cat in categories %}
+                            <tr>
+                                <td class="fw-semibold">{{ cat.name }}</td>
+                                <td>
+                                    <div style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+                                        {% for kw in cat.keywords[:5] %}
+                                        <span class="badge bg-blue" style="font-size:0.6rem">{{ kw }}</span>
+                                        {% endfor %}
+                                        {% if cat.keywords|length > 5 %}
+                                        <span class="badge bg-secondary" style="font-size:0.6rem">+{{ cat.keywords|length - 5 }}</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td><small class="text-muted">{{ cat.type }}</small></td>
+                                <td>
+                                    <form method="POST" action="/settings" style="display:inline"
+                                          onsubmit="return confirm('Remove {{ cat.name }}?')">
+                                        <input type="hidden" name="action" value="remove_category">
+                                        <input type="hidden" name="cat_name" value="{{ cat.name }}">
+                                        <button class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-body border-top" style="border-color:var(--card-border)">
+                <form method="POST" action="/settings" class="row g-2">
+                    <input type="hidden" name="action" value="add_category">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control form-control-sm" name="cat_name"
+                               placeholder="Category name" required>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control form-control-sm" name="cat_keywords"
+                               placeholder="Keywords (comma-separated)" required>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select form-select-sm" name="cat_type">
+                            <option value="daily">Daily</option>
+                            <option value="bill">Bill</option>
+                            <option value="insurance">Insurance</option>
+                            <option value="transport">Transport</option>
+                            <option value="lifestyle">Lifestyle</option>
+                            <option value="finance">Finance</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-sm btn-success w-100"><i class="bi bi-plus"></i> Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="card mt-3">
+            <div class="card-body text-muted small">
+                <i class="bi bi-magic text-orange"></i>
+                <strong>Auto-categorization tips:</strong>
+                <ul class="mb-0 mt-1">
+                    <li>Add common keywords for each category (e.g. "MSEDCL", "MAHADISCOM" for Electricity)</li>
+                    <li>Longer keyword matches get higher priority</li>
+                    <li>Add "Amazon", "Flipkart" etc. to Shopping for better auto-tagging</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- People Management -->
+<div class="row g-3 mt-2">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-people text-info"></i> People
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Balance</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in people %}
+                            {% set bal = balance_map.get(p.name, 0) %}
+                            <tr>
+                                <td class="fw-semibold">{{ p.name }}</td>
+                                <td>
+                                    {% if bal != 0 %}
+                                    <span class="badge {% if bal > 0 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                        {% if bal > 0 %} You owe ₹{{ "%.0f"|format(bal) }}{% else %} Owes you ₹{{ "%.0f"|format(-bal) }}{% endif %}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form method="POST" action="/settings" style="display:inline"
+                                          onsubmit="return confirm('Remove {{ p.name }}?')">
+                                        <input type="hidden" name="action" value="remove_person">
+                                        <input type="hidden" name="person_name" value="{{ p.name }}">
+                                        <button class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-body border-top" style="border-color:var(--card-border)">
+                <form method="POST" action="/settings" class="row g-2">
+                    <input type="hidden" name="action" value="add_person">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control form-control-sm" name="person_name"
+                               placeholder="Person name (e.g. Mom, Ravi...)" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-sm btn-success w-100"><i class="bi bi-plus"></i> Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

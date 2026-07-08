@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Project data files (user data — never commit)
+finance.db
+expense_tracker.xlsx
+finance_tracker_backup.zip
+test_report.xlsx
+*.bak
+*.log
+
+# Flask
+instance/
+
+# Windows reserved names
+nul

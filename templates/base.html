@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💰 Finance Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --bg-dark: #0a0e1a;
+            --card-bg: #131a2e;
+            --card-border: #1e2740;
+            --accent-green: #00c853;
+            --accent-red: #ff5252;
+            --accent-blue: #448aff;
+            --accent-orange: #ff9100;
+            --text-muted: #7b89a6;
+            --text-bright: #e8edf5;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-bright);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #0d1630 0%, #131a2e 100%) !important;
+            border-bottom: 1px solid var(--card-border);
+            padding: 0.75rem 0;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: var(--accent-green) !important;
+        }
+        .nav-link {
+            color: var(--text-muted) !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem !important;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-bright) !important;
+            background: rgba(255,255,255,0.05);
+        }
+        .nav-link i {
+            margin-right: 6px;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid var(--card-border);
+            padding: 1rem 1.25rem;
+            font-weight: 600;
+        }
+        .stat-card {
+            padding: 1.25rem;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(19,26,46,0.9) 0%, rgba(26,35,64,0.9) 100%);
+            border: 1px solid var(--card-border);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+        .stat-card .stat-icon {
+            font-size: 2rem;
+            opacity: 0.8;
+        }
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .text-green { color: var(--accent-green); }
+        .text-red { color: var(--accent-red); }
+        .text-blue { color: var(--accent-blue); }
+        .text-orange { color: var(--accent-orange); }
+        .bg-green { background: rgba(0,200,83,0.15); }
+        .bg-red { background: rgba(255,82,82,0.15); }
+        .bg-blue { background: rgba(68,130,255,0.15); }
+        .badge-category {
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 0.75rem;
+        }
+        .table {
+            color: var(--text-bright);
+            font-size: 0.9rem;
+        }
+        .table thead th {
+            border-bottom: 1px solid var(--card-border);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+        .table td {
+            border-color: rgba(255,255,255,0.04);
+            vertical-align: middle;
+        }
+        .table-hover tbody tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+        .btn-primary {
+            background: var(--accent-blue);
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1.25rem;
+            font-weight: 600;
+        }
+        .btn-success {
+            background: var(--accent-green);
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1.25rem;
+            font-weight: 600;
+        }
+        .btn-outline-light {
+            border-color: var(--card-border);
+            color: var(--text-bright);
+            border-radius: 8px;
+        }
+        .btn-outline-light:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: var(--text-muted);
+        }
+        .form-control, .form-select {
+            background: #0d1630;
+            border: 1px solid var(--card-border);
+            color: var(--text-bright);
+            border-radius: 8px;
+            padding: 0.6rem 0.9rem;
+        }
+        .form-control:focus, .form-select:focus {
+            background: #0d1630;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 0.2rem rgba(68,130,255,0.25);
+            color: var(--text-bright);
+        }
+        .form-label {
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .amount-input-group {
+            position: relative;
+        }
+        .amount-input-group .currency-symbol {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-weight: 600;
+            z-index: 5;
+        }
+        .amount-input-group input {
+            padding-left: 30px;
+        }
+        .category-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .flash-messages {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+        .flash-messages .alert {
+            margin-bottom: 8px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        footer {
+            border-top: 1px solid var(--card-border);
+            padding: 1.5rem 0;
+            margin-top: 3rem;
+            color: var(--text-muted);
+        }
+        .progress-bar-container {
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.06);
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+        @media (max-width: 768px) {
+            .stat-value { font-size: 1.3rem; }
+            .navbar-brand { font-size: 1.1rem; }
+            .flash-messages { max-width: 300px; right: 10px; top: 70px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid px-3 px-lg-4">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-wallet2"></i> Finance Tracker
+            </a>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+                <i class="bi bi-list text-white"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navMenu">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
+                            <i class="bi bi-house"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/add' %}active{% endif %}" href="/add">
+                            <i class="bi bi-plus-circle"></i> Add
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/upload' %}active{% endif %}" href="/upload">
+                            <i class="bi bi-upload"></i> Upload
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/reports' %}active{% endif %}" href="/reports">
+                            <i class="bi bi-bar-chart"></i> Reports
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">
+                            <i class="bi bi-gear"></i> Settings
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/people' %}active{% endif %}" href="/people">
+                            <i class="bi bi-people"></i> People
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/balances' %}active{% endif %}" href="/balances">
+                            <i class="bi bi-bank"></i> Balances
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/cashback' %}active{% endif %}" href="/cashback">
+                            <i class="bi bi-cash"></i> Cashback
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/export" title="Export All Data">
+                            <i class="bi bi-download"></i> Export CSV
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <div class="container-fluid px-3 px-lg-4 py-3">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center">
+        <small>💰 Finance Tracker — Own your money.</small>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-dismiss flash messages
+        setTimeout(() => {
+            document.querySelectorAll('.flash-messages .alert').forEach(el => {
+                el.classList.remove('show');
+                setTimeout(() => el.remove(), 300);
+            });
+        }, 5000);
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
