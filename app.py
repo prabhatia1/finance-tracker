@@ -79,29 +79,57 @@ def get_db():
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
+
+def get_user_cards(user_id):
+    """Get a user's cards from DB."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT card_id AS id, name, bank, type FROM user_cards WHERE user_id = ? ORDER BY name",
+        (user_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_user_people(user_id):
+    """Get a user's people list from DB."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT name FROM user_people WHERE user_id = ? ORDER BY name",
+        (user_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def load_cards():
-    with open(CARDS_PATH) as f:
-        return json.load(f)["cards"]
+    """Legacy fallback: load cards for very first user."""
+    conn = get_db()
+    first = conn.execute("SELECT id FROM users ORDER BY id LIMIT 1").fetchone()
+    conn.close()
+    if first:
+        return get_user_cards(first["id"])
+    return []
+
+
+def load_people():
+    """Legacy fallback: load people for very first user."""
+    conn = get_db()
+    first = conn.execute("SELECT id FROM users ORDER BY id LIMIT 1").fetchone()
+    conn.close()
+    if first:
+        return get_user_people(first["id"])
+    return []
+
 
 def load_categories():
     with open(CATEGORIES_PATH) as f:
         return json.load(f)["categories"]
 
-def save_cards(cards):
-    with open(CARDS_PATH, "w") as f:
-        json.dump({"cards": cards}, f, indent=2)
 
 def save_categories(categories):
     with open(CATEGORIES_PATH, "w") as f:
         json.dump({"categories": categories}, f, indent=2)
-
-def load_people():
-    with open(PEOPLE_PATH) as f:
-        return json.load(f)["people"]
-
-def save_people(people):
-    with open(PEOPLE_PATH, "w") as f:
-        json.dump({"people": people}, f, indent=2)
 
 # ─── DB Init ─────────────────────────────────────────────────────────────────
 
@@ -142,13 +170,66 @@ def init_db():
             display_name TEXT NOT NULL,
             created_at TEXT DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS user_cards (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            card_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            bank TEXT NOT NULL,
+            type TEXT DEFAULT 'Other',
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, card_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS user_people (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, name)
+        );
     """)
     conn.commit()
     conn.close()
 
 init_db()
 
-# ─── Auth Routes ─────────────────────────────────────────────────────────────
+# Auto-migrate cards.json / people.json to DB for first user
+def _migrate_json_to_db():
+    conn = get_db()
+    card_count = conn.execute("SELECT COUNT(*) FROM user_cards").fetchone()[0]
+    people_count = conn.execute("SELECT COUNT(*) FROM user_people").fetchone()[0]
+    first_user = conn.execute("SELECT id FROM users ORDER BY id LIMIT 1").fetchone()
+    conn.close()
+    if not first_user:
+        return
+    uid = first_user["id"]
+    migrated = False
+    if card_count == 0 and os.path.exists(CARDS_PATH):
+        with open(CARDS_PATH) as f:
+            data = json.load(f)
+        conn = get_db()
+        for c in data.get("cards", []):
+            conn.execute("INSERT OR IGNORE INTO user_cards (user_id, card_id, name, bank, type) VALUES (?, ?, ?, ?, ?)", (uid, c["id"], c["name"], c["bank"], c.get("type", "Other")))
+        conn.commit()
+        conn.close()
+        migrated = True
+    if people_count == 0 and os.path.exists(PEOPLE_PATH):
+        with open(PEOPLE_PATH) as f:
+            data = json.load(f)
+        conn = get_db()
+        for p in data.get("people", []):
+            conn.execute("INSERT OR IGNORE INTO user_people (user_id, name) VALUES (?, ?)", (uid, p["name"]))
+        conn.commit()
+        conn.close()
+        migrated = True
+    if migrated:
+        print("[migrate] Existing JSON data migrated to DB")
+
+_migrate_json_to_db()
+
+# ─── Auth Routes
 from werkzeug.security import generate_password_hash, check_password_hash
 
 @app.route("/login", methods=["GET", "POST"])
@@ -517,6 +598,7 @@ def index():
     """Dashboard — show daily summary + quick stats."""
 
     person = session.get("display_name", "")
+    user_id = session["user_id"]
     today = date.today().strftime("%Y-%m-%d")
     sort_by = request.args.get("sort", "id")
     sort_today = request.args.get("sort_today", "id")
@@ -579,7 +661,7 @@ def index():
     ).fetchone()[0]
     conn.close()
 
-    cards = load_cards()
+    cards = get_user_cards(user_id)
     categories = load_categories()
 
     # ─── AJAX partials ──────────────────────────────────────────────────────
@@ -609,15 +691,6 @@ def index():
                          page_recent=page_recent, recent_pages=recent_pages, recent_total=recent_total)
 
 
-def get_all_persons():
-    """Get list of all person/display names from users table."""
-    try:
-        conn = get_db()
-        rows = conn.execute("SELECT display_name FROM users ORDER BY display_name").fetchall()
-        conn.close()
-        return [r["display_name"] for r in rows]
-    except Exception:
-        return []
 
 
 @app.route("/add", methods=["GET", "POST"])
@@ -625,9 +698,13 @@ def get_all_persons():
 @login_required
 def add_transaction():
     """Add a single transaction via form."""
-    cards = load_cards()
+    user_id = session["user_id"]
+    display_name = session.get("display_name", "")
+    cards = get_user_cards(user_id)
     categories = load_categories()
-    persons = get_all_persons()
+    persons = [p["name"] for p in get_user_people(user_id)]
+    if display_name and display_name not in persons:
+        persons.insert(0, display_name)
 
     if request.method == "POST":
         txn_date = request.form.get("date", date.today().strftime("%Y-%m-%d"))
@@ -643,17 +720,14 @@ def add_transaction():
 
         if not description:
             flash("Description is required!", "danger")
-            persons = get_all_persons()
             return render_template("add.html", cards=cards, categories=categories, persons=persons)
 
         if amount <= 0:
             flash("Amount must be greater than zero!", "danger")
-            persons = get_all_persons()
             return render_template("add.html", cards=cards, categories=categories, persons=persons)
 
         if amount > 50_000_000:
             flash("Amount cannot exceed ₹5 crore!", "danger")
-            persons = get_all_persons()
             return render_template("add.html", cards=cards, categories=categories, persons=persons)
 
         # Auto-categorize if user chose "Auto"
@@ -694,67 +768,70 @@ def add_transaction():
                          today=date.today().strftime("%Y-%m-%d"))
 
 
-@app.route("/upload", methods=["GET", "POST"])
 
-@login_required
-def upload_statement():
-    """Upload a bank/credit card CSV statement."""
 
-    person = session.get("display_name", "")
-    cards = load_cards()
-
-    if request.method == "POST":
-        if "file" not in request.files:
-            flash("No file selected!", "danger")
-            return render_template("upload.html", cards=cards)
-
-        file = request.files["file"]
-        if file.filename == "":
-            flash("No file selected!", "danger")
-            return render_template("upload.html", cards=cards)
-
-        if not file.filename.endswith(".csv"):
-            flash("Please upload a CSV file!", "danger")
-            return render_template("upload.html", cards=cards)
-
-        card_id = request.form.get("card_id", "")
-        if card_id == "auto":
-            card_id = None  # Let parser guess
-
-        content = file.read().decode("utf-8-sig", errors="ignore")
-
-        # Check if it's a standard bank format or need to guess
-        transactions, errors = parse_uploaded_csv(content, card_id)
-
-        if not transactions:
-            flash(f"❌ No transactions found! Errors: {'; '.join(errors[:5])}", "danger")
-            return render_template("upload.html", cards=cards, debug_preview=content[:2000])
-
-        # Save to DB
-        conn = get_db()
-        inserted = 0
-        for txn in transactions:
-            conn.execute(
-                """INSERT INTO transactions (date, description, amount, category, card_id, txn_type, source, person)
-                   VALUES (?, ?, ?, ?, ?, ?, 'upload', ?)""",
-                (txn["date"], txn["description"][:200], txn["amount"],
-                 txn["category"], txn["card_id"], txn["txn_type"], person)
-            )
-            inserted += 1
-        conn.commit()
-        conn.close()
-
-        # Sync all to Excel
-        db_sync_to_excel()
-
-        msg = f"✅ Imported {inserted} transactions from {file.filename}"
-        if errors:
-            msg += f"\n⚠️ {len(errors)} warnings (first 3): " + "; ".join(errors[:3])
-
-        flash(msg, "success")
-        return redirect(url_for("index"))
-
-    return render_template("upload.html", cards=cards)
+#@app.route("/upload", methods=["GET", "POST"])
+#
+#@login_required
+#def upload_statement():
+#    """Upload a bank/credit card CSV statement."""
+#
+#    person = session.get("display_name", "")
+#    user_id = session["user_id"]
+#    cards = get_user_cards(user_id)
+#
+#    if request.method == "POST":
+#        if "file" not in request.files:
+#            flash("No file selected!", "danger")
+#            return render_template("upload.html", cards=cards)
+#
+#        file = request.files["file"]
+#        if file.filename == "":
+#            flash("No file selected!", "danger")
+#            return render_template("upload.html", cards=cards)
+#
+#        if not file.filename.endswith(".csv"):
+#            flash("Please upload a CSV file!", "danger")
+#            return render_template("upload.html", cards=cards)
+#
+#        card_id = request.form.get("card_id", "")
+#        if card_id == "auto":
+#            card_id = None  # Let parser guess
+#
+#        content = file.read().decode("utf-8-sig", errors="ignore")
+#
+#        # Check if it's a standard bank format or need to guess
+#        transactions, errors = parse_uploaded_csv(content, card_id)
+#
+#        if not transactions:
+#            flash(f"❌ No transactions found! Errors: {'; '.join(errors[:5])}", "danger")
+#            return render_template("upload.html", cards=cards, debug_preview=content[:2000])
+#
+#        # Save to DB
+#        conn = get_db()
+#        inserted = 0
+#        for txn in transactions:
+#            conn.execute(
+#                """INSERT INTO transactions (date, description, amount, category, card_id, txn_type, source, person)
+#                   VALUES (?, ?, ?, ?, ?, ?, 'upload', ?)""",
+#                (txn["date"], txn["description"][:200], txn["amount"],
+#                 txn["category"], txn["card_id"], txn["txn_type"], person)
+#            )
+#            inserted += 1
+#        conn.commit()
+#        conn.close()
+#
+#        # Sync all to Excel
+#        db_sync_to_excel()
+#
+#        msg = f"✅ Imported {inserted} transactions from {file.filename}"
+#        if errors:
+#            msg += f"\n⚠️ {len(errors)} warnings (first 3): " + "; ".join(errors[:3])
+#
+#        flash(msg, "success")
+#        return redirect(url_for("index"))
+#
+#    return render_template("upload.html", cards=cards)
 
 
 @app.route("/reports")
@@ -764,6 +841,7 @@ def reports():
     """Reports page — daily, monthly, card-wise."""
 
     person = session.get("display_name", "")
+    user_id = session["user_id"]
     today = date.today()
 
     # Daily report
@@ -779,7 +857,7 @@ def reports():
     card_param = request.args.get("card_id", None)
     card_rpt = get_card_report(card_param, year_param, month_param, person)
 
-    cards = load_cards()
+    cards = get_user_cards(user_id)
     card_map = {c["id"]: c["name"] for c in cards}
 
     return render_template("reports.html",
@@ -864,6 +942,8 @@ def delete_transaction(txn_id):
 def edit_transaction(txn_id):
     """Edit a transaction."""
     person = session.get("display_name", "")
+    user_id = session["user_id"]
+    display_name = session.get("display_name", "")
     conn = get_db()
     if request.method == "POST":
         txn_date = request.form.get("date", date.today().strftime("%Y-%m-%d"))
@@ -922,8 +1002,10 @@ def edit_transaction(txn_id):
         flash("Transaction not found!", "danger")
         return redirect(url_for("index"))
 
-    cards = load_cards()
-    persons = get_all_persons()
+    cards = get_user_cards(user_id)
+    persons = [p["name"] for p in get_user_people(user_id)]
+    if display_name and display_name not in persons:
+        persons.insert(0, display_name)
     return render_template("edit.html",
                          txn=txn,
                          cards=cards,
@@ -992,9 +1074,10 @@ def settings():
     """Manage cards, categories, and people."""
 
     person = session.get("display_name", "")
-    cards = load_cards()
+    user_id = session["user_id"]
+    cards = get_user_cards(user_id)
     categories = load_categories()
-    people = load_people()
+    people = [{"name": p["name"]} for p in get_user_people(user_id)]
 
     # Get balances for each person
     conn = get_db()
@@ -1015,21 +1098,31 @@ def settings():
         action = request.form.get("action")
 
         if action == "add_card":
-            new_card = {
-                "id": request.form["card_id"].strip().lower().replace(" ", "_"),
-                "name": request.form["card_name"].strip(),
-                "bank": request.form["card_bank"].strip(),
-                "type": request.form["card_type"].strip(),
-            }
-            cards.append(new_card)
-            save_cards(cards)
-            flash(f"✅ Card '{new_card['name']}' added!", "success")
+            card_id = request.form["card_id"].strip().lower().replace(" ", "_")
+            card_name = request.form["card_name"].strip()
+            card_bank = request.form["card_bank"].strip()
+            card_type = request.form["card_type"].strip()
+            conn = get_db()
+            try:
+                conn.execute(
+                    "INSERT INTO user_cards (user_id, card_id, name, bank, type) VALUES (?, ?, ?, ?, ?)",
+                    (user_id, card_id, card_name, card_bank, card_type)
+                )
+                conn.commit()
+                flash(f"✅ Card '{card_name}' added!", "success")
+            except Exception:
+                flash("❌ Card ID already exists.", "danger")
+            conn.close()
+            cards = get_user_cards(user_id)
 
         elif action == "remove_card":
             cid = request.form["card_id"]
-            cards = [c for c in cards if c["id"] != cid]
-            save_cards(cards)
-            flash(f"🗑️ Card removed", "info")
+            conn = get_db()
+            conn.execute("DELETE FROM user_cards WHERE user_id = ? AND card_id = ?", (user_id, cid))
+            conn.commit()
+            conn.close()
+            cards = get_user_cards(user_id)
+            flash("🗑️ Card removed", "info")
 
         elif action == "add_category":
             new_cat = {
@@ -1045,14 +1138,23 @@ def settings():
             cat_name = request.form["cat_name"]
             categories = [c for c in categories if c["name"] != cat_name]
             save_categories(categories)
-            flash(f"🗑️ Category removed", "info")
+            flash("🗑️ Category removed", "info")
 
         elif action == "add_person":
             name = request.form["person_name"].strip()
-            if name and not any(p["name"] == name for p in people):
-                people.append({"name": name})
-                save_people(people)
-                flash(f"✅ Person '{name}' added!", "success")
+            if name:
+                conn = get_db()
+                try:
+                    conn.execute(
+                        "INSERT INTO user_people (user_id, name) VALUES (?, ?)",
+                        (user_id, name)
+                    )
+                    conn.commit()
+                    flash(f"✅ Person '{name}' added!", "success")
+                except Exception:
+                    flash("❌ Person already exists.", "danger")
+                conn.close()
+            people = [{"name": p["name"]} for p in get_user_people(user_id)]
 
         elif action == "remove_person":
             name = request.form["person_name"]
@@ -1071,9 +1173,12 @@ def settings():
             if balance != 0:
                 flash(f"❌ Cannot remove '{name}' — pending amount of ₹{abs(balance):.0f} ({'you owe them' if balance > 0 else 'owes you'}). Settle up first!", "danger")
             else:
-                people = [p for p in people if p["name"] != name]
-                save_people(people)
-                flash(f"🗑️ Person removed", "info")
+                conn = get_db()
+                conn.execute("DELETE FROM user_people WHERE user_id = ? AND name = ?", (user_id, name))
+                conn.commit()
+                conn.close()
+                flash("🗑️ Person removed", "info")
+            people = [{"name": p["name"]} for p in get_user_people(user_id)]
 
         return redirect(url_for("settings"))
 
@@ -1369,6 +1474,7 @@ def all_transactions():
     """Paginated, sortable, filterable list of all transactions."""
 
     person = session.get("display_name", "")
+    user_id = session["user_id"]
     page = int(request.args.get("page", 1))
     per_page = 50
     sort_by = request.args.get("sort", "date")
@@ -1424,7 +1530,7 @@ def all_transactions():
     ).fetchall()
     conn.close()
 
-    cards = load_cards()
+    cards = get_user_cards(user_id)
     categories = load_categories()
 
     is_ajax = request.args.get("ajax") == "1"
