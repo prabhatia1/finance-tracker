@@ -8,7 +8,7 @@
                 <i class="bi bi-upload text-primary"></i> Upload Bank / Credit Card Statement
             </div>
             <div class="card-body">
-                <form method="POST" action="/upload" enctype="multipart/form-data">
+                <form method="POST" action="/upload" enctype="multipart/form-data" onsubmit="this.querySelector('.btn-primary').disabled=true; this.querySelector('.btn-primary').innerHTML='⏳ Uploading...'">
                     <div class="row g-3">
                         <!-- File picker -->
                         <div class="col-12">

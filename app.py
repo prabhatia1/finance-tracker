@@ -894,7 +894,7 @@ def cashback_page():
     conn = get_db()
     rows = conn.execute(
         "SELECT id, date, description, amount, category, card_id, txn_type, cashback "
-        "FROM transactions WHERE txn_type='debit' "
+        "FROM transactions WHERE cashback > 0 "
         "ORDER BY date DESC, id DESC"
     ).fetchall()
     conn.close()

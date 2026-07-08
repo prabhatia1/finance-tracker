@@ -62,7 +62,8 @@
                         </td>
                         <td><span class="badge badge-category bg-blue">{{ t.category }}</span></td>
                         <td><code>{{ t.card_id or 'other' }}</code></td>
-                        <td class="text-end text-danger">₹{{ "%.2f"|format(t.amount) }}</td>
+                        <td class="text-end {% if t.txn_type == 'credit' %}text-green{% else %}text-danger{% endif %}">
+                            {% if t.txn_type == 'credit' %}+{% endif %}₹{{ "%.2f"|format(t.amount) }}
                         <td class="text-end text-success fw-semibold">+₹{{ "%.2f"|format(t.cashback) }}</td>
                         <td class="text-end text-muted">
                             {% if t.amount > 0 %}

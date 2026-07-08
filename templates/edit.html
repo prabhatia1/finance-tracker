@@ -8,7 +8,7 @@
                 <i class="bi bi-pencil-square text-orange"></i> Edit Transaction
             </div>
             <div class="card-body">
-                <form method="POST" action="/edit/{{ txn.id }}">
+                <form method="POST" action="/edit/{{ txn.id }}" onsubmit="document.querySelector('.btn-warning').disabled=true; this.querySelector('.btn-warning').innerHTML='⏳ Saving...'">
                     <div class="row g-3">
                         <!-- Date -->
                         <div class="col-md-4">
