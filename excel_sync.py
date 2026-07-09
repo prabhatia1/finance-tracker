@@ -16,9 +16,20 @@ from datetime import datetime, date
 from pathlib import Path
 from shutil import copy2
 
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
+try:
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    _HAS_OPENPYXL = True
+except ImportError:
+    _HAS_OPENPYXL = False
+    # Stub openpyxl types so the rest of the module can reference them
+    Font = object
+    PatternFill = object
+    Alignment = object
+    Border = object
+    Side = object
+    get_column_letter = lambda c: c
 
 BASE_DIR = Path(__file__).parent
 EXCEL_PATH = BASE_DIR / "expense_tracker.xlsx"
@@ -112,13 +123,16 @@ if "Other" in WEBCAT_TO_EXCEL:
 
 # ─── Styles ──────────────────────────────────────────────────────────────────
 
-HEADER_FONT = Font(name="Calibri", bold=True, color="FFFFFF", size=11)
-HEADER_FILL = PatternFill(start_color="2F5496", end_color="2F5496", fill_type="solid")
-ALTERNATE_FILL = PatternFill(start_color="D6E4F0", end_color="D6E4F0", fill_type="solid")
-BORDER_THIN = Border(
-    left=Side(style="thin"), right=Side(style="thin"),
-    top=Side(style="thin"), bottom=Side(style="thin")
-)
+if _HAS_OPENPYXL:
+    HEADER_FONT = Font(name="Calibri", bold=True, color="FFFFFF", size=11)
+    HEADER_FILL = PatternFill(start_color="2F5496", end_color="2F5496", fill_type="solid")
+    ALTERNATE_FILL = PatternFill(start_color="D6E4F0", end_color="D6E4F0", fill_type="solid")
+    BORDER_THIN = Border(
+        left=Side(style="thin"), right=Side(style="thin"),
+        top=Side(style="thin"), bottom=Side(style="thin")
+    )
+else:
+    HEADER_FONT = HEADER_FILL = ALTERNATE_FILL = BORDER_THIN = None
 CATEGORY_COLORS = {
     "Electricity Bill": "FFC000",
     "LIC Premium": "FF6600",
@@ -263,6 +277,8 @@ def ensure_monthly_sheets(wb):
 
 
 def read_transactions_from_excel():
+    if not _HAS_OPENPYXL:
+        return []
     """
     Read transactions from all 12 monthly calendar sheets.
     Returns flat list of transaction dicts.
@@ -352,6 +368,8 @@ def read_transactions_from_excel():
 
 
 def write_transactions_to_excel(transactions):
+    if not _HAS_OPENPYXL:
+        return
     """Create/update a flat 'Transactions' sheet for website reference."""
     if not EXCEL_PATH.exists():
         return
@@ -393,6 +411,8 @@ def write_transactions_to_excel(transactions):
 
 
 def add_transaction_to_excel(txn):
+    if not _HAS_OPENPYXL:
+        return
     """
     Add a single transaction to the appropriate month sheet cell.
     Uses exact category matching via WEBCAT_TO_EXCEL reverse map.
@@ -505,6 +525,8 @@ def excel_sync_to_db():
 
 
 def db_sync_to_excel():
+    if not _HAS_OPENPYXL:
+        return 0
     """
     Sync DB → Excel (write to monthly sheets).
     First clears all data cells, then writes fresh from DB.
