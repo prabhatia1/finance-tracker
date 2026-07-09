@@ -43,11 +43,14 @@ from excel_sync import (
 from cashback import CARD_CB_LABELS
 
 app = Flask(__name__)
-if SECRET_KEY_PATH.exists():
-    app.secret_key = SECRET_KEY_PATH.read_text().strip()
-else:
+try:
+    if SECRET_KEY_PATH.exists():
+        app.secret_key = SECRET_KEY_PATH.read_text().strip()
+    else:
+        app.secret_key = os.urandom(32).hex()
+        SECRET_KEY_PATH.write_text(app.secret_key)
+except Exception:
     app.secret_key = os.urandom(32).hex()
-    SECRET_KEY_PATH.write_text(app.secret_key)
 
 # ─── Login helper ────────────────────────────────────────────────────────────
 from functools import wraps
