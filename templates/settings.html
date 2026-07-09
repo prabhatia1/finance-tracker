@@ -220,6 +220,32 @@
 </div>
 {% endif %}
 
+<!-- Claim Data from Old Account -->
+<div class="card mt-3">
+    <div class="card-header">
+        <i class="bi bi-arrow-left-right me-1"></i> Claim Old Data
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-2">
+            Transfer all transactions, cards, and people from your old account to this one.
+            This is a one-way move — the old account's data will be reassigned to you.
+        </p>
+        <form method="POST" action="/transfer-data" class="row g-2 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label small">Old Username</label>
+                <input type="text" class="form-control form-control-sm" name="old_username"
+                       placeholder="e.g. pratik" required>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-sm btn-warning w-100"
+                        onclick="return confirm('Transfer all data from this old account to yours?')">
+                    <i class="bi bi-arrow-right"></i> Transfer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Security Word -->
 <div class="card mt-3">
     <div class="card-header">
