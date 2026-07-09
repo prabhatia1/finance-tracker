@@ -52,6 +52,51 @@ try:
 except Exception:
     app.secret_key = os.urandom(32).hex()
 
+# ─── Seed Data for New Users ────────────────────────────────────────────────
+def seed_new_user(user_id):
+    """Add default cards, people, and sample transactions for a new user."""
+    conn = get_db()
+    now = date.today()
+
+    # Default cards
+    default_cards = [
+        ("sbi_cb",  "SBI Cashback",     "SBI", "Visa"),
+        ("sbi_pp",  "SBI PhonePe",      "SBI", "Visa"),
+        ("hdfc_mil","HDFC Millennia",    "HDFC","Visa"),
+        ("hdfc_swig","HDFC Swiggy",      "HDFC","Visa"),
+        ("bob_eterna","BOB Eterna",      "BOB", "RuPay"),
+    ]
+    for cid, nm, bk, tp in default_cards:
+        conn.execute("INSERT OR IGNORE INTO user_cards (user_id, card_id, name, bank, type) VALUES (?,?,?,?,?)", (user_id, cid, nm, bk, tp))
+
+    # Default people
+    for nm in ["Sister", "Brother", "Dad"]:
+        conn.execute("INSERT OR IGNORE INTO user_people (user_id, name) VALUES (?,?)", (user_id, nm))
+
+    # Sample transactions (current month)
+    sample = [
+        (f"{now.year}-{now.month:02d}-01", "Electricity Bill",  1250, "Electricity Bill",  "sbi_cb",  "",          ""),
+        (f"{now.year}-{now.month:02d}-03", "Big Basket",         845,  "Groceries",         "hdfc_mil","",          ""),
+        (f"{now.year}-{now.month:02d}-05", "Zomato Order",       320,  "Dining / Food",     "sbi_pp",  "",          ""),
+        (f"{now.year}-{now.month:02d}-07", "Petrol",            1500,  "Fuel",              "hdfc_swig","",         ""),
+        (f"{now.year}-{now.month:02d}-10", "Netflix",            499,  "Entertainment",     "hdfc_mil","Monthly",   ""),
+        (f"{now.year}-{now.month:02d}-12", "Amazon Shopping",   1200,  "Shopping",          "sbi_cb",  "Electronics",""),
+        (f"{now.year}-{now.month:02d}-15", "LIC Premium",       5000,  "LIC Premium",       "hdfc_mil","Yearly",    ""),
+        (f"{now.year}-{now.month:02d}-18", "Mobile Recharge",    299,  "Recharge / Mobile",  "sbi_pp",  "",          ""),
+        (f"{now.year}-{now.month:02d}-20", "D Mart",            1560,  "Groceries",         "bob_eterna","",        "Sister"),
+        (f"{now.year}-{now.month:02d}-22", "Ola Cab",            250,  "Travel",            "sbi_cb",  "Office",     ""),
+        (f"{now.year}-{now.month:02d}-25", "Medicine",           340,  "Medical / Health",   "hdfc_mil","Pharmacy",  "Dad"),
+        (f"{now.year}-{now.month:02d}-28", "Swiggy",             180,  "Dining / Food",     "sbi_cb",  "",          ""),
+        (f"{now.year}-{now.month:02d}-01", "Salary",          75000,  "Other",             "other",   "Credit",     ""),
+    ]
+    for dt, desc, amt, cat, card, notes, person in sample:
+        conn.execute(
+            "INSERT INTO transactions (date, description, amount, category, card_id, txn_type, notes, source, user_id, person) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (dt, desc, abs(amt), cat, card, "credit" if amt > 5000 and "Salary" in desc else "debit", notes, "seed", user_id, person))
+
+    conn.commit()
+    conn.close()
+
 # ─── Login helper ────────────────────────────────────────────────────────────
 from functools import wraps
 
@@ -298,12 +343,14 @@ def register():
             flash("Username already taken.", "danger")
             return render_template("register.html")
         pw_hash = generate_password_hash(password)
-        conn.execute(
+        cur = conn.execute(
             "INSERT INTO users (username, password_hash, display_name) VALUES (?, ?, ?)",
             (username, pw_hash, display_name)
         )
+        user_id = cur.lastrowid
         conn.commit()
         conn.close()
+        seed_new_user(user_id)
         flash("Account created! Please log in.", "success")
         return redirect(url_for("login"))
     return render_template("register.html")
