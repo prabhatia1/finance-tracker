@@ -21,6 +21,7 @@
         <div class="stat-card">
             <div class="stat-label">This Month (Net)</div>
             <div class="stat-value {% if monthly_total >= 0 %}text-green{% else %}text-red{% endif %}">{% if monthly_total >= 0 %}+{% endif %}₹{{ "%.0f"|format(monthly_total) }}</div>
+            <small class="text-secondary-custom">{{ monthly_txns_count }} txn{% if monthly_txns_count != 1 %}s{% endif %}</small>
         </div>
     </div>
     <div class="col-6 col-lg-3">

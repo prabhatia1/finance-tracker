@@ -769,6 +769,13 @@ def index():
         "SELECT COUNT(*) FROM transactions WHERE date = ? AND txn_type = 'credit' AND user_id = ?",
         (today, user_id,)
     ).fetchone()[0]
+
+    # Monthly transaction count
+    monthly_txns_count = conn.execute(
+        "SELECT COUNT(*) FROM transactions WHERE "
+        "strftime('%Y', date) = ? AND strftime('%m', date) = ? AND user_id = ?",
+        (str(date.today().year), f"{date.today().month:02d}", user_id,)
+    ).fetchone()[0]
     total_cb = conn.execute(
         "SELECT COALESCE(SUM(cashback), 0) FROM transactions WHERE cashback > 0 AND user_id = ?", (user_id,)
     ).fetchone()[0]
@@ -795,6 +802,7 @@ def index():
                          daily=daily,
                          recent=recent,
                          monthly_total=monthly_total,
+                         monthly_txns_count=monthly_txns_count,
                          total_cb=total_cb,
                          cards=cards,
                          categories=categories,
