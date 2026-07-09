@@ -1461,35 +1461,6 @@ def update_security_word():
     return redirect(url_for("settings"))
 
 
-@app.route("/reset-all-data", methods=["GET", "POST"])
-@login_required
-def reset_all_data():
-    """Delete all transactions, cards, and people for the logged-in user."""
-    if request.method == "GET":
-        return render_template("reset_confirm.html")
-
-    current_pw = request.form.get("confirm_password", "")
-    if not current_pw:
-        flash("Password is required to reset.", "danger")
-        return redirect(url_for("settings"))
-
-    user_id = session["user_id"]
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    if not user or not check_password_hash(user["password_hash"], current_pw):
-        conn.close()
-        flash("Incorrect password.", "danger")
-        return redirect(url_for("settings"))
-
-    conn.execute("DELETE FROM transactions WHERE user_id = ?", (user_id,))
-    conn.execute("DELETE FROM user_cards WHERE user_id = ?", (user_id,))
-    conn.execute("DELETE FROM user_people WHERE user_id = ?", (user_id,))
-    conn.commit()
-    conn.close()
-    flash("✅ All data reset! Your account is ready for a fresh start.", "success")
-    return redirect(url_for("index"))
-
-
 @app.route("/cashback")
 
 @login_required
