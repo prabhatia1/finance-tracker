@@ -53,7 +53,6 @@ Add, edit, or remove cards anytime from the Settings page.
 ### 📈 Reports & Export
 - **Daily / Monthly / Card** views with grouped data
 - **CSV Export** — One-click download of all transactions (pratik only)
-- **Monthly Excel Download** — Calendar-format Excel workbook (pratik only)
 - **Pagination** — Browse transaction history page by page
 
 ### 📦 Backup & Restore
@@ -98,7 +97,6 @@ Open **http://127.0.0.1:5000** in your browser.
 finance-tracker/
 ├── app.py                 # Flask application — all routes & logic
 ├── cashback.py            # Cashback reference rules (labels, rates)
-├── excel_sync.py          # Excel ↔ DB sync engine
 ├── backup_restore.py      # Database backup and restore CLI
 ├── cards.json             # Card definitions (per-user managed in DB)
 ├── categories.json        # Auto-categorization keyword rules
@@ -108,8 +106,7 @@ finance-tracker/
 └── README.md              # This file
 
 # Runtime data (auto-created, git-ignored):
-├── finance.db             # SQLite database
-└── expense_tracker.xlsx   # Monthly Excel workbook
+└── finance.db             # SQLite database
 ```
 
 ---
@@ -175,7 +172,6 @@ python backup_restore.py restore backup_20260709_120000.db
 - **Backend**: Flask (Python 3)
 - **Database**: SQLite (via `sqlite3` stdlib)
 - **Templating**: Jinja2 (built-in Flask)
-- **Excel**: openpyxl
 - **Frontend**: Bootstrap 5 (dark theme), Bootstrap Icons
 - **Auto-categorization**: Rule-based keyword matching
 
@@ -187,4 +183,4 @@ MIT — free to use, modify, and share.
 
 ---
 
-*Built with ❤️ by Pratik Bhatia*
+*Built with ❤️ by Pratik*
