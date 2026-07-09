@@ -1230,15 +1230,19 @@ def settings():
             card_bank = sanitize(request.form["card_bank"])
             card_type = sanitize(request.form["card_type"])
             conn = get_db()
-            try:
+            existing = conn.execute(
+                "SELECT id FROM user_cards WHERE user_id = ? AND card_id = ?",
+                (user_id, card_id)
+            ).fetchone()
+            if existing:
+                flash("❌ Card ID already exists.", "danger")
+            else:
                 conn.execute(
                     "INSERT INTO user_cards (user_id, card_id, name, bank, type) VALUES (?, ?, ?, ?, ?)",
                     (user_id, card_id, card_name, card_bank, card_type)
                 )
                 conn.commit()
                 flash(f"✅ Card '{card_name}' added!", "success")
-            except Exception:
-                flash("❌ Card ID already exists.", "danger")
             conn.close()
             cards = get_user_cards(user_id)
 
@@ -1271,15 +1275,19 @@ def settings():
             name = sanitize(request.form["person_name"])
             if name:
                 conn = get_db()
-                try:
+                existing = conn.execute(
+                    "SELECT id FROM user_people WHERE user_id = ? AND name = ?",
+                    (user_id, name)
+                ).fetchone()
+                if existing:
+                    flash("❌ Person already exists.", "danger")
+                else:
                     conn.execute(
                         "INSERT INTO user_people (user_id, name) VALUES (?, ?)",
                         (user_id, name)
                     )
                     conn.commit()
                     flash(f"✅ Person '{name}' added!", "success")
-                except Exception:
-                    flash("❌ Person already exists.", "danger")
                 conn.close()
             people = [{"name": p["name"]} for p in get_user_people(user_id)]
 
