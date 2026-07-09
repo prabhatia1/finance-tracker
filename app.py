@@ -52,6 +52,20 @@ try:
 except Exception:
     app.secret_key = os.urandom(32).hex()
 
+# ─── Session Security ─────────────────────────────────────────────────────
+app.config['SESSION_COOKIE_HTTPONLY'] = True      # JS can't read cookie
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'      # blocks CSRF from external sites
+if not app.debug:
+    app.config['SESSION_COOKIE_SECURE'] = True     # HTTPS only in production
+
+# ─── Sanitization helper ──────────────────────────────────────────────────
+import html as _html
+def sanitize(text):
+    """Strip HTML tags from user input to prevent XSS."""
+    if not text:
+        return ""
+    return _html.escape(re.sub(r'<[^>]*>', '', text)).strip()
+
 # ─── Seed Data for New Users ────────────────────────────────────────────────
 def seed_new_user(user_id):
     """Add default cards, people, and sample transactions for a new user."""
@@ -67,32 +81,36 @@ def seed_new_user(user_id):
         ("bob_eterna","BOB Eterna",      "BOB", "RuPay"),
     ]
     for cid, nm, bk, tp in default_cards:
-        conn.execute("INSERT OR IGNORE INTO user_cards (user_id, card_id, name, bank, type) VALUES (?,?,?,?,?)", (user_id, cid, nm, bk, tp))
+        conn.execute(
+            "INSERT OR IGNORE INTO user_cards (user_id, card_id, name, bank, type) VALUES (?,?,?,?,?)",
+            (user_id, cid, nm, bk, tp))
 
     # Default people
     for nm in ["Sister", "Brother", "Dad"]:
-        conn.execute("INSERT OR IGNORE INTO user_people (user_id, name) VALUES (?,?)", (user_id, nm))
+        conn.execute(
+            "INSERT OR IGNORE INTO user_people (user_id, name) VALUES (?,?)",
+            (user_id, nm))
 
     # Sample transactions (current month)
     sample = [
-        (f"{now.year}-{now.month:02d}-01", "Electricity Bill",  1250, "Electricity Bill",  "sbi_cb",  "",          ""),
-        (f"{now.year}-{now.month:02d}-03", "Big Basket",         845,  "Groceries",         "hdfc_mil","",          ""),
-        (f"{now.year}-{now.month:02d}-05", "Zomato Order",       320,  "Dining / Food",     "sbi_pp",  "",          ""),
-        (f"{now.year}-{now.month:02d}-07", "Petrol",            1500,  "Fuel",              "hdfc_swig","",         ""),
-        (f"{now.year}-{now.month:02d}-10", "Netflix",            499,  "Entertainment",     "hdfc_mil","Monthly",   ""),
-        (f"{now.year}-{now.month:02d}-12", "Amazon Shopping",   1200,  "Shopping",          "sbi_cb",  "Electronics",""),
-        (f"{now.year}-{now.month:02d}-15", "LIC Premium",       5000,  "LIC Premium",       "hdfc_mil","Yearly",    ""),
-        (f"{now.year}-{now.month:02d}-18", "Mobile Recharge",    299,  "Recharge / Mobile",  "sbi_pp",  "",          ""),
-        (f"{now.year}-{now.month:02d}-20", "D Mart",            1560,  "Groceries",         "bob_eterna","",        "Sister"),
-        (f"{now.year}-{now.month:02d}-22", "Ola Cab",            250,  "Travel",            "sbi_cb",  "Office",     ""),
-        (f"{now.year}-{now.month:02d}-25", "Medicine",           340,  "Medical / Health",   "hdfc_mil","Pharmacy",  "Dad"),
-        (f"{now.year}-{now.month:02d}-28", "Swiggy",             180,  "Dining / Food",     "sbi_cb",  "",          ""),
-        (f"{now.year}-{now.month:02d}-01", "Salary",          75000,  "Other",             "other",   "Credit",     ""),
+        (f"{now.year}-{now.month:02d}-01", "Electricity Bill",  1250, "Electricity Bill",  "sbi_cb",  "",          "",  "debit"),
+        (f"{now.year}-{now.month:02d}-03", "Big Basket",         845,  "Groceries",         "hdfc_mil","",          "",  "debit"),
+        (f"{now.year}-{now.month:02d}-05", "Zomato Order",       320,  "Dining / Food",     "sbi_pp",  "",          "",  "debit"),
+        (f"{now.year}-{now.month:02d}-07", "Petrol",            1500,  "Fuel",              "hdfc_swig","",         "",  "debit"),
+        (f"{now.year}-{now.month:02d}-10", "Netflix",            499,  "Entertainment",     "hdfc_mil","Monthly",   "",  "debit"),
+        (f"{now.year}-{now.month:02d}-12", "Amazon Shopping",   1200,  "Shopping",          "sbi_cb",  "Electronics","",  "debit"),
+        (f"{now.year}-{now.month:02d}-15", "LIC Premium",       5000,  "LIC Premium",       "hdfc_mil","Yearly",    "",  "debit"),
+        (f"{now.year}-{now.month:02d}-18", "Mobile Recharge",    299,  "Recharge / Mobile",  "sbi_pp",  "",          "", "debit"),
+        (f"{now.year}-{now.month:02d}-20", "D Mart",            1560,  "Groceries",         "bob_eterna","",        "Sister","debit"),
+        (f"{now.year}-{now.month:02d}-22", "Ola Cab",            250,  "Travel",            "sbi_cb",  "Office",     "",  "debit"),
+        (f"{now.year}-{now.month:02d}-25", "Medicine",           340,  "Medical / Health",   "hdfc_mil","Pharmacy",  "Dad","debit"),
+        (f"{now.year}-{now.month:02d}-28", "Swiggy",             180,  "Dining / Food",     "sbi_cb",  "",          "",  "debit"),
+        (f"{now.year}-{now.month:02d}-01", "Salary",          75000,  "Other",             "other",   "Credit",     "",  "credit"),
     ]
-    for dt, desc, amt, cat, card, notes, person in sample:
+    for dt, desc, amt, cat, card, notes, person, ttype in sample:
         conn.execute(
             "INSERT INTO transactions (date, description, amount, category, card_id, txn_type, notes, source, user_id, person) VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (dt, desc, abs(amt), cat, card, "credit" if amt > 5000 and "Salary" in desc else "debit", notes, "seed", user_id, person))
+            (dt, desc, abs(amt), cat, card, ttype, notes, "seed", user_id, person))
 
     conn.commit()
     conn.close()
@@ -293,6 +311,25 @@ try:
 except Exception as _e:
     print(f"⚠️ Startup sync skipped: {_e}")
 
+# ─── Security Headers (applied to every response) ─────────────────────────
+@app.after_request
+def _add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    return response
+
+# ─── Custom Error Pages (no stack trace leaks) ────────────────────────────
+@app.errorhandler(404)
+def not_found(e):
+    return render_template("error.html", code=404, message="Page not found."), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    return render_template("error.html", code=500, message="Something went wrong."), 500
+
 # ─── Auth Routes
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -300,7 +337,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 def login():
     if request.method == "POST":
-        username = request.form.get("username", "").strip().lower()
+        username = sanitize(request.form.get("username", "")).lower()
         password = request.form.get("password", "")
         conn = get_db()
         user = conn.execute(
@@ -309,6 +346,7 @@ def login():
         ).fetchone()
         conn.close()
         if user and check_password_hash(user["password_hash"], password):
+            session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             session["display_name"] = user["display_name"]
@@ -321,8 +359,8 @@ def login():
 
 def register():
     if request.method == "POST":
-        username = request.form.get("username", "").strip().lower()
-        display_name = request.form.get("display_name", "").strip()
+        username = sanitize(request.form.get("username", "")).lower()
+        display_name = sanitize(request.form.get("display_name", ""))
         password = request.form.get("password", "")
         confirm = request.form.get("confirm", "")
         if not username or not display_name or not password:
@@ -771,15 +809,15 @@ def add_transaction():
 
     if request.method == "POST":
         txn_date = request.form.get("date", date.today().strftime("%Y-%m-%d"))
-        description = request.form.get("description", "").strip()
+        description = sanitize(request.form.get("description", ""))
         amount = parse_amount(request.form.get("amount", "0"))
         category = request.form.get("category", "Other")
         card_id = request.form.get("card_id", "").strip()
         if not card_id:
             card_id = "other"
         txn_type = request.form.get("txn_type", "debit")
-        notes = request.form.get("notes", "").strip()
-        person = request.form.get("person", "").strip()
+        notes = sanitize(request.form.get("notes", ""))
+        person = sanitize(request.form.get("person", ""))
 
         if not description:
             flash("Description is required!", "danger")
@@ -1021,15 +1059,15 @@ def edit_transaction(txn_id):
     conn = get_db()
     if request.method == "POST":
         txn_date = request.form.get("date", date.today().strftime("%Y-%m-%d"))
-        description = request.form.get("description", "").strip()
+        description = sanitize(request.form.get("description", ""))
         amount = parse_amount(request.form.get("amount", "0"))
         category = request.form.get("category", "Other")
         card_id = request.form.get("card_id", "").strip()
         if not card_id:
             card_id = "other"
         txn_type = request.form.get("txn_type", "debit")
-        notes = request.form.get("notes", "").strip()
-        person = request.form.get("person", "").strip()
+        notes = sanitize(request.form.get("notes", ""))
+        person = sanitize(request.form.get("person", ""))
 
         if not description:
             flash("Description is required!", "danger")
@@ -1169,10 +1207,10 @@ def settings():
         action = request.form.get("action")
 
         if action == "add_card":
-            card_id = request.form["card_id"].strip().lower().replace(" ", "_")
-            card_name = request.form["card_name"].strip()
-            card_bank = request.form["card_bank"].strip()
-            card_type = request.form["card_type"].strip()
+            card_id = sanitize(request.form["card_id"]).lower().replace(" ", "_")
+            card_name = sanitize(request.form["card_name"])
+            card_bank = sanitize(request.form["card_bank"])
+            card_type = sanitize(request.form["card_type"])
             conn = get_db()
             try:
                 conn.execute(
@@ -1197,9 +1235,9 @@ def settings():
 
         elif action == "add_category":
             new_cat = {
-                "name": request.form["cat_name"].strip(),
-                "keywords": [k.strip() for k in request.form["cat_keywords"].strip().split(",") if k.strip()],
-                "type": request.form["cat_type"].strip(),
+                "name": sanitize(request.form["cat_name"]),
+                "keywords": [sanitize(k) for k in request.form["cat_keywords"].split(",") if k.strip()],
+                "type": sanitize(request.form["cat_type"]),
             }
             categories.append(new_cat)
             save_categories(categories)
@@ -1212,7 +1250,7 @@ def settings():
             flash("🗑️ Category removed", "info")
 
         elif action == "add_person":
-            name = request.form["person_name"].strip()
+            name = sanitize(request.form["person_name"])
             if name:
                 conn = get_db()
                 try:
