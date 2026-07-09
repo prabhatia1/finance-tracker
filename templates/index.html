@@ -14,12 +14,13 @@
         <div class="stat-card">
             <div class="stat-label">Today's Credits</div>
             <div class="stat-value text-green">+₹{{ "%.0f"|format(daily.total_credit) }}</div>
+            <small class="text-secondary-custom">{{ today_credits_count }} txn{% if today_credits_count != 1 %}s{% endif %}</small>
         </div>
     </div>
     <div class="col-6 col-lg-3">
         <div class="stat-card">
-            <div class="stat-label">This Month</div>
-            <div class="stat-value text-orange">₹{{ "%.0f"|format(monthly_total) }}</div>
+            <div class="stat-label">This Month (Net)</div>
+            <div class="stat-value {% if monthly_total >= 0 %}text-green{% else %}text-red{% endif %}">{% if monthly_total >= 0 %}+{% endif %}₹{{ "%.0f"|format(monthly_total) }}</div>
         </div>
     </div>
     <div class="col-6 col-lg-3">

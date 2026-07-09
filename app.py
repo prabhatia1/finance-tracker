@@ -752,13 +752,23 @@ def index():
     ).fetchall()
 
     # Monthly total so far
-    monthly_total = conn.execute(
+    monthly_debit = conn.execute(
         "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE "
         "strftime('%Y', date) = ? AND strftime('%m', date) = ? AND txn_type = 'debit' AND user_id = ?",
         (str(date.today().year), f"{date.today().month:02d}", user_id,)
     ).fetchone()[0]
+    monthly_credit = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE "
+        "strftime('%Y', date) = ? AND strftime('%m', date) = ? AND txn_type = 'credit' AND user_id = ?",
+        (str(date.today().year), f"{date.today().month:02d}", user_id,)
+    ).fetchone()[0]
+    monthly_total = monthly_credit - monthly_debit
 
-    # Total cashback earned (all time)
+    # Today's credit count
+    today_credits_count = conn.execute(
+        "SELECT COUNT(*) FROM transactions WHERE date = ? AND txn_type = 'credit' AND user_id = ?",
+        (today, user_id,)
+    ).fetchone()[0]
     total_cb = conn.execute(
         "SELECT COALESCE(SUM(cashback), 0) FROM transactions WHERE cashback > 0 AND user_id = ?", (user_id,)
     ).fetchone()[0]
@@ -774,7 +784,7 @@ def index():
         return render_template("_today_section.html",
                              daily=daily,
                              sort_today=sort_today,
-                             page_today=page_today, today_pages=today_pages, today_total=today_total)
+                             page_today=page_today, today_pages=today_pages, today_total=today_total, today_credits_count=today_credits_count)
     if ajax_recent:
         return render_template("_recent_section.html",
                              recent=recent,
@@ -790,7 +800,7 @@ def index():
                          categories=categories,
                          sort_by=sort_by,
                          sort_today=sort_today,
-                         page_today=page_today, today_pages=today_pages, today_total=today_total,
+                         page_today=page_today, today_pages=today_pages, today_total=today_total, today_credits_count=today_credits_count,
                          page_recent=page_recent, recent_pages=recent_pages, recent_total=recent_total)
 
 
