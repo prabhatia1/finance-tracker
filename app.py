@@ -64,15 +64,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# ─── Sync Excel on Startup ────────────────────────────────────────────────────
-_excel_mtime = 0
-try:
-    init_excel()  # Create fresh Excel if missing, sync if exists
-    smart_sync()
-    _excel_mtime = EXCEL_PATH.stat().st_mtime
-except Exception as _e:
-    print(f"⚠️ Startup sync skipped (first run on new DB?): {_e}")
-
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def get_db():
@@ -151,7 +142,8 @@ def init_db():
             source TEXT DEFAULT 'manual',
             created_at TEXT DEFAULT (datetime('now','localtime')),
             person TEXT DEFAULT "",
-            cashback REAL DEFAULT 0
+            cashback REAL DEFAULT 0,
+            user_id INTEGER REFERENCES users(id)
         );
 
         CREATE INDEX IF NOT EXISTS idx_txn_date ON transactions(date);
@@ -198,7 +190,22 @@ def init_db():
 
 init_db()
 
-# Auto-migrate cards.json / people.json to DB for first user
+# Auto-migrate: add missing columns to existing tables
+for col, col_type in [("person", "TEXT DEFAULT ''"), ("user_id", "INTEGER REFERENCES users(id)")]:
+    try:
+        conn = get_db()
+        conn.execute(f"ALTER TABLE transactions ADD COLUMN {col} {col_type}")
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass  # column already exists
+try:
+    conn = get_db()
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_txn_user ON transactions(user_id)")
+    conn.commit()
+    conn.close()
+except Exception:
+    pass
 def _migrate_json_to_db():
     conn = get_db()
     card_count = conn.execute("SELECT COUNT(*) FROM user_cards").fetchone()[0]
@@ -231,6 +238,15 @@ def _migrate_json_to_db():
         print("[migrate] Existing JSON data migrated to DB")
 
 _migrate_json_to_db()
+
+# ─── Sync Excel on Startup ────────────────────────────────────────────────────
+_excel_mtime = 0
+try:
+    init_excel()  # Create fresh Excel if missing
+    smart_sync()
+    _excel_mtime = EXCEL_PATH.stat().st_mtime
+except Exception as _e:
+    print(f"⚠️ Startup sync skipped: {_e}")
 
 # ─── Auth Routes
 from werkzeug.security import generate_password_hash, check_password_hash

@@ -491,6 +491,8 @@ def add_transaction_to_excel(txn):
 
 
 def excel_sync_to_db():
+    if not _HAS_OPENPYXL:
+        return 0
     """Sync Excel monthly sheets → SQLite database, preserving card assignments."""
     transactions = read_transactions_from_excel()
 
@@ -673,6 +675,8 @@ def db_sync_to_excel():
 
 
 def smart_sync():
+    if not _HAS_OPENPYXL:
+        return
     """
     Two-way smart sync.
     Count-based: the side with more transactions wins.
@@ -718,6 +722,10 @@ def _get_db_transactions():
     import sqlite3
     conn = sqlite3.connect(str(BASE_DIR / "finance.db"))
     conn.row_factory = sqlite3.Row
+    # Ensure tables exist (could be first run on a fresh DB)
+    conn.execute("CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, description TEXT NOT NULL, amount REAL NOT NULL, category TEXT DEFAULT 'Other', card_id TEXT DEFAULT 'other', txn_type TEXT DEFAULT 'debit', notes TEXT DEFAULT '', source TEXT DEFAULT 'manual', created_at TEXT DEFAULT (datetime('now','localtime')), person TEXT DEFAULT \"\", cashback REAL DEFAULT 0, user_id INTEGER)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_txn_date ON transactions(date)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_txn_user ON transactions(user_id)")
     rows = conn.execute(
         "SELECT date, description, amount, category, card_id, txn_type, notes "
         "FROM transactions ORDER BY date DESC, id DESC"
