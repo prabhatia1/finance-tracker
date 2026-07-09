@@ -220,29 +220,19 @@
 </div>
 {% endif %}
 
-<!-- Claim Data from Old Account -->
-<div class="card mt-3">
-    <div class="card-header">
-        <i class="bi bi-arrow-left-right me-1"></i> Claim Old Data
+<!-- Reset All Data -->
+<div class="card mt-3 border-danger">
+    <div class="card-header text-danger">
+        <i class="bi bi-exclamation-triangle me-1"></i> Reset All Data
     </div>
     <div class="card-body">
         <p class="small text-muted mb-2">
-            Transfer all transactions, cards, and people from your old account to this one.
-            This is a one-way move — the old account's data will be reassigned to you.
+            Delete <strong>all</strong> your transactions, cards, and people for a fresh start.
+            Your account and password will be kept. <strong>This cannot be undone.</strong>
         </p>
-        <form method="POST" action="/transfer-data" class="row g-2 align-items-end">
-            <div class="col-md-6">
-                <label class="form-label small">Old Username</label>
-                <input type="text" class="form-control form-control-sm" name="old_username"
-                       placeholder="e.g. pratik" required>
-            </div>
-            <div class="col-md-3">
-                <button class="btn btn-sm btn-warning w-100"
-                        onclick="return confirm('Transfer all data from this old account to yours?')">
-                    <i class="bi bi-arrow-right"></i> Transfer
-                </button>
-            </div>
-        </form>
+        <a href="{{ url_for('reset_all_data') }}" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-trash"></i> Reset My Data
+        </a>
     </div>
 </div>
 

@@ -1461,75 +1461,33 @@ def update_security_word():
     return redirect(url_for("settings"))
 
 
-@app.route("/transfer-data", methods=["POST"])
+@app.route("/reset-all-data", methods=["GET", "POST"])
 @login_required
-def transfer_data():
-    """Transfer all data (txns, cards, people) from another username to the current user."""
-    old_username = sanitize(request.form.get("old_username", ""))
-    if not old_username:
-        flash("Old username is required.", "danger")
+def reset_all_data():
+    """Delete all transactions, cards, and people for the logged-in user."""
+    if request.method == "GET":
+        return render_template("reset_confirm.html")
+
+    current_pw = request.form.get("confirm_password", "")
+    if not current_pw:
+        flash("Password is required to reset.", "danger")
         return redirect(url_for("settings"))
 
-    new_user_id = session["user_id"]
+    user_id = session["user_id"]
     conn = get_db()
-
-    old_user = conn.execute("SELECT id, display_name FROM users WHERE username = ?", (old_username,)).fetchone()
-    if not old_user:
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user or not check_password_hash(user["password_hash"], current_pw):
         conn.close()
-        flash(f"❌ User '{old_username}' not found.", "danger")
+        flash("Incorrect password.", "danger")
         return redirect(url_for("settings"))
 
-    old_id = old_user["id"]
-    if old_id == new_user_id:
-        conn.close()
-        flash("❌ Can't transfer to yourself.", "danger")
-        return redirect(url_for("settings"))
-
-    count = {}
-    # ── Transactions ──
-    count["txns"] = conn.execute(
-        "UPDATE OR REPLACE transactions SET user_id = ? WHERE user_id = ?", (new_user_id, old_id)
-    ).rowcount
-
-    # ── Cards ──
-    old_cards = conn.execute("SELECT card_id, name, type FROM user_cards WHERE user_id = ?", (old_id,)).fetchall()
-    for card in old_cards:
-        existing = conn.execute(
-            "SELECT id FROM user_cards WHERE user_id = ? AND card_id = ?", (new_user_id, card["card_id"])
-        ).fetchone()
-        if not existing:
-            conn.execute(
-                "INSERT INTO user_cards (user_id, card_id, name, type) VALUES (?, ?, ?, ?)",
-                (new_user_id, card["card_id"], card["name"], card["type"])
-            )
-    count["cards"] = len(old_cards)
-
-    # ── People ──
-    old_people = conn.execute("SELECT name FROM user_people WHERE user_id = ?", (old_id,)).fetchall()
-    for p in old_people:
-        existing = conn.execute(
-            "SELECT id FROM user_people WHERE user_id = ? AND name = ?", (new_user_id, p["name"])
-        ).fetchone()
-        if not existing:
-            conn.execute(
-                "INSERT INTO user_people (user_id, name) VALUES (?, ?)",
-                (new_user_id, p["name"])
-            )
-    count["people"] = len(old_people)
-
-    # ── Delete old user's remaining data ──
-    conn.execute("DELETE FROM user_cards WHERE user_id = ?", (old_id,))
-    conn.execute("DELETE FROM user_people WHERE user_id = ?", (old_id,))
-    conn.execute("DELETE FROM transactions WHERE user_id = ?", (old_id,))
+    conn.execute("DELETE FROM transactions WHERE user_id = ?", (user_id,))
+    conn.execute("DELETE FROM user_cards WHERE user_id = ?", (user_id,))
+    conn.execute("DELETE FROM user_people WHERE user_id = ?", (user_id,))
     conn.commit()
     conn.close()
-
-    flash(
-        f"✅ Data transferred! {count['txns']} transactions, "
-        f"{count['cards']} cards, {count['people']} people moved to your account.",
-        "success"
-    )
-    return redirect(url_for("settings"))
+    flash("✅ All data reset! Your account is ready for a fresh start.", "success")
+    return redirect(url_for("index"))
 
 
 @app.route("/cashback")
