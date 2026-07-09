@@ -14,6 +14,7 @@ A personal finance tracking web app built with **Flask + SQLite** — track expe
 - **Registration & Login** — Each user has their own account
 - **Per-user data isolation** — Every transaction belongs to a user; no data leaks between accounts
 - **Display name** — Customizable name shown on dashboard and People pages
+- **Password recovery** — Set a security word in Settings → use `/forgot-password` to reset without email
 
 ### 📊 Dashboard
 - **Summary cards** — Today's Spend, Today's Credits, Monthly Total, Cashback
@@ -196,6 +197,7 @@ MIT — free to use, modify, and share.
 
 ### 2026-07-09 — Card form simplified, DB column dropped, "Bank / Card" labels
 - **Removed bank column from DB** — `bank` column dropped from `user_cards` table via migration. Existing cards lose only the bank name (card name, type, transactions all preserved)
+- **Forgot password** — `/forgot-password` page with security-word verification. Set your word in Settings.
 - **Simplified add card form** — Removed separate ID and Bank fields. Just enter a name (e.g. "SBI Cashback") — ID is auto-generated, type is optional
 - **"Bank / Card" labels** — Transaction source and table headers now show "Bank / Card" instead of just "Card"
 - **Duplicate name protection** — Adding a card/bank with an existing name is blocked gracefully

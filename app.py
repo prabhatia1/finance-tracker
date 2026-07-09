@@ -231,6 +231,7 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             display_name TEXT NOT NULL,
+            security_word TEXT DEFAULT '',
             created_at TEXT DEFAULT (datetime('now'))
         );
 
@@ -260,6 +261,13 @@ def init_db():
         conn.commit()
     except Exception:
         pass  # Column already dropped or didn't exist
+
+    # Migration: add security_word column to users
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN security_word TEXT DEFAULT ''")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
 
     conn.close()
 
@@ -404,6 +412,62 @@ def register():
         flash("Account created! Please log in.", "success")
         return redirect(url_for("login"))
     return render_template("register.html")
+
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    """Reset password using security word verification."""
+    if request.method == "POST":
+        username = sanitize(request.form.get("username", "")).lower()
+        security_word = sanitize(request.form.get("security_word", ""))
+        new_password = request.form.get("new_password", "")
+        confirm = request.form.get("confirm", "")
+
+        if not username or not security_word or not new_password:
+            flash("All fields are required.", "danger")
+            return render_template("forgot_password.html", username=username)
+
+        if new_password != confirm:
+            flash("Passwords do not match.", "danger")
+            return render_template("forgot_password.html", username=username)
+
+        if len(new_password) < 4:
+            flash("Password must be at least 4 characters.", "danger")
+            return render_template("forgot_password.html", username=username)
+
+        conn = get_db()
+        user = conn.execute(
+            "SELECT id, security_word FROM users WHERE username = ?",
+            (username,)
+        ).fetchone()
+
+        if not user:
+            conn.close()
+            flash("Username not found.", "danger")
+            return render_template("forgot_password.html", username=username)
+
+        if not user["security_word"]:
+            conn.close()
+            flash("This account does not have a security word set. Contact the admin.", "danger")
+            return render_template("forgot_password.html", username=username)
+
+        if user["security_word"] != security_word:
+            conn.close()
+            flash("Security word is incorrect.", "danger")
+            return render_template("forgot_password.html", username=username)
+
+        # Security word matches — update password
+        pw_hash = generate_password_hash(new_password)
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (pw_hash, user["id"])
+        )
+        conn.commit()
+        conn.close()
+        flash("✅ Password reset successfully! Please log in.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("forgot_password.html")
 
 @app.route("/logout")
 
@@ -1369,6 +1433,31 @@ def change_password():
     conn.commit()
     conn.close()
     flash("✅ Password changed successfully!", "success")
+    return redirect(url_for("settings"))
+
+
+@app.route("/update-security-word", methods=["POST"])
+@login_required
+def update_security_word():
+    """Update the logged-in user's security word."""
+    current_pw = request.form.get("current_password", "")
+    new_word = sanitize(request.form.get("security_word", ""))
+
+    if not current_pw or not new_word:
+        flash("Current password and security word are required.", "danger")
+        return redirect(url_for("settings"))
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    if not user or not check_password_hash(user["password_hash"], current_pw):
+        conn.close()
+        flash("Current password is incorrect.", "danger")
+        return redirect(url_for("settings"))
+
+    conn.execute("UPDATE users SET security_word = ? WHERE id = ?", (new_word, session["user_id"]))
+    conn.commit()
+    conn.close()
+    flash("✅ Security word updated!", "success")
     return redirect(url_for("settings"))
 
 
