@@ -140,10 +140,13 @@ def get_db():
 def get_user_cards(user_id):
     """Get a user's cards from DB."""
     conn = get_db()
-    rows = conn.execute(
-        "SELECT card_id AS id, name, bank, type FROM user_cards WHERE user_id = ? ORDER BY name",
-        (user_id,)
-    ).fetchall()
+    try:
+        rows = conn.execute(
+            "SELECT card_id AS id, name, bank, type FROM user_cards WHERE user_id = ? ORDER BY name",
+            (user_id,)
+        ).fetchall()
+    except Exception:
+        rows = []
     conn.close()
     return [dict(r) for r in rows]
 
@@ -151,10 +154,13 @@ def get_user_cards(user_id):
 def get_user_people(user_id):
     """Get a user's people list from DB."""
     conn = get_db()
-    rows = conn.execute(
-        "SELECT name FROM user_people WHERE user_id = ? ORDER BY name",
-        (user_id,)
-    ).fetchall()
+    try:
+        rows = conn.execute(
+            "SELECT name FROM user_people WHERE user_id = ? ORDER BY name",
+            (user_id,)
+        ).fetchall()
+    except Exception:
+        rows = []
     conn.close()
     return [dict(r) for r in rows]
 
