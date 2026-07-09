@@ -52,20 +52,6 @@ try:
 except Exception:
     app.secret_key = os.urandom(32).hex()
 
-# ─── Session Security ─────────────────────────────────────────────────────
-app.config['SESSION_COOKIE_HTTPONLY'] = True      # JS can't read cookie
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'      # blocks CSRF from external sites
-if not app.debug:
-    app.config['SESSION_COOKIE_SECURE'] = True     # HTTPS only in production
-
-# ─── Sanitization helper ──────────────────────────────────────────────────
-import html as _html
-def sanitize(text):
-    """Strip HTML tags from user input to prevent XSS."""
-    if not text:
-        return ""
-    return _html.escape(re.sub(r'<[^>]*>', '', text)).strip()
-
 # ─── Login helper ────────────────────────────────────────────────────────────
 from functools import wraps
 
@@ -262,25 +248,6 @@ try:
 except Exception as _e:
     print(f"⚠️ Startup sync skipped: {_e}")
 
-# ─── Security Headers (applied to every response) ─────────────────────────
-@app.after_request
-def _add_security_headers(response):
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-    return response
-
-# ─── Custom Error Pages (no stack trace leaks) ────────────────────────────
-@app.errorhandler(404)
-def not_found(e):
-    return render_template("error.html", code=404, message="Page not found."), 404
-
-@app.errorhandler(500)
-def server_error(e):
-    return render_template("error.html", code=500, message="Something went wrong."), 500
-
 # ─── Auth Routes
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -288,7 +255,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 def login():
     if request.method == "POST":
-        username = sanitize(request.form.get("username", "")).lower()
+        username = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "")
         conn = get_db()
         user = conn.execute(
@@ -297,7 +264,6 @@ def login():
         ).fetchone()
         conn.close()
         if user and check_password_hash(user["password_hash"], password):
-            session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             session["display_name"] = user["display_name"]
@@ -310,8 +276,8 @@ def login():
 
 def register():
     if request.method == "POST":
-        username = sanitize(request.form.get("username", "")).lower()
-        display_name = sanitize(request.form.get("display_name", ""))
+        username = request.form.get("username", "").strip().lower()
+        display_name = request.form.get("display_name", "").strip()
         password = request.form.get("password", "")
         confirm = request.form.get("confirm", "")
         if not username or not display_name or not password:
@@ -758,15 +724,15 @@ def add_transaction():
 
     if request.method == "POST":
         txn_date = request.form.get("date", date.today().strftime("%Y-%m-%d"))
-        description = sanitize(request.form.get("description", ""))
+        description = request.form.get("description", "").strip()
         amount = parse_amount(request.form.get("amount", "0"))
         category = request.form.get("category", "Other")
         card_id = request.form.get("card_id", "").strip()
         if not card_id:
             card_id = "other"
         txn_type = request.form.get("txn_type", "debit")
-        notes = sanitize(request.form.get("notes", ""))
-        person = sanitize(request.form.get("person", ""))
+        notes = request.form.get("notes", "").strip()
+        person = request.form.get("person", "").strip()
 
         if not description:
             flash("Description is required!", "danger")
@@ -1008,15 +974,15 @@ def edit_transaction(txn_id):
     conn = get_db()
     if request.method == "POST":
         txn_date = request.form.get("date", date.today().strftime("%Y-%m-%d"))
-        description = sanitize(request.form.get("description", ""))
+        description = request.form.get("description", "").strip()
         amount = parse_amount(request.form.get("amount", "0"))
         category = request.form.get("category", "Other")
         card_id = request.form.get("card_id", "").strip()
         if not card_id:
             card_id = "other"
         txn_type = request.form.get("txn_type", "debit")
-        notes = sanitize(request.form.get("notes", ""))
-        person = sanitize(request.form.get("person", ""))
+        notes = request.form.get("notes", "").strip()
+        person = request.form.get("person", "").strip()
 
         if not description:
             flash("Description is required!", "danger")
@@ -1156,10 +1122,10 @@ def settings():
         action = request.form.get("action")
 
         if action == "add_card":
-            card_id = sanitize(request.form["card_id"]).lower().replace(" ", "_")
-            card_name = sanitize(request.form["card_name"])
-            card_bank = sanitize(request.form["card_bank"])
-            card_type = sanitize(request.form["card_type"])
+            card_id = request.form["card_id"].strip().lower().replace(" ", "_")
+            card_name = request.form["card_name"].strip()
+            card_bank = request.form["card_bank"].strip()
+            card_type = request.form["card_type"].strip()
             conn = get_db()
             try:
                 conn.execute(
@@ -1184,9 +1150,9 @@ def settings():
 
         elif action == "add_category":
             new_cat = {
-                "name": sanitize(request.form["cat_name"]),
-                "keywords": [sanitize(k) for k in request.form["cat_keywords"].split(",") if k.strip()],
-                "type": sanitize(request.form["cat_type"]),
+                "name": request.form["cat_name"].strip(),
+                "keywords": [k.strip() for k in request.form["cat_keywords"].strip().split(",") if k.strip()],
+                "type": request.form["cat_type"].strip(),
             }
             categories.append(new_cat)
             save_categories(categories)
@@ -1199,7 +1165,7 @@ def settings():
             flash("🗑️ Category removed", "info")
 
         elif action == "add_person":
-            name = sanitize(request.form["person_name"])
+            name = request.form["person_name"].strip()
             if name:
                 conn = get_db()
                 try:
@@ -1660,4 +1626,4 @@ if __name__ == "__main__":
     print(f"📁 Database: {DB_PATH}")
     print(f"🔗 Open: http://127.0.0.1:5000")
     print("=" * 60)
-    app.run(host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)
