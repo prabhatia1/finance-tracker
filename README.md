@@ -21,8 +21,13 @@ A personal finance tracking web app built with **Flask + SQLite** — track expe
 - **Recent transactions** — Full paginated history with edit/delete actions
 - **Cashback column** — See cashback at a glance on every row
 
-### 💳 Multi-Card Support
-Manage expenses across any number of credit/debit cards. Cards configured per-user via the Settings page.
+### 💳 Multi-Card & Bank Support
+Track expenses across credit cards, debit cards, and bank accounts. All payment sources are managed as "Bank / Card" — a unified list.
+
+- **Unified label** — Transaction source shows "Bank / Card" instead of just "Card"
+- **Simplified setup** — Adding a card/bank needs just a name (e.g. "SBI Cashback"). ID is auto-generated, bank field is merged into the name, type is optional
+- **Per-user management** — Configure your own cards/banks via Settings page
+- **Duplicate protection** — Duplicate names are blocked
 
 | Default Card | Nickname |
 |-------------|----------|
@@ -184,3 +189,16 @@ MIT — free to use, modify, and share.
 ---
 
 *Built with ❤️ by Pratik*
+
+---
+
+## 📋 Changelog
+
+### 2026-07-09 — Card form simplified, DB column dropped, "Bank / Card" labels
+- **Removed bank column from DB** — `bank` column dropped from `user_cards` table via migration. Existing cards lose only the bank name (card name, type, transactions all preserved)
+- **Simplified add card form** — Removed separate ID and Bank fields. Just enter a name (e.g. "SBI Cashback") — ID is auto-generated, type is optional
+- **"Bank / Card" labels** — Transaction source and table headers now show "Bank / Card" instead of just "Card"
+- **Duplicate name protection** — Adding a card/bank with an existing name is blocked gracefully
+- **Removed PRAGMA foreign_keys=ON** — Fixes "FOREIGN KEY constraint failed" error on live site
+- **Safeguard missing tables** — `get_user_cards`, `get_user_people` handle missing tables gracefully
+- **Dashboard fixes** — Today's Credits shows txn count, This Month shows net (credits − debits) with +/- sign, no minus sign on Today's Spend

@@ -74,16 +74,16 @@ def seed_new_user(user_id):
 
     # Default cards
     default_cards = [
-        ("sbi_cb",  "SBI Cashback",     "SBI", "Visa"),
-        ("sbi_pp",  "SBI PhonePe",      "SBI", "Visa"),
-        ("hdfc_mil","HDFC Millennia",    "HDFC","Visa"),
-        ("hdfc_swig","HDFC Swiggy",      "HDFC","Visa"),
-        ("bob_eterna","BOB Eterna",      "BOB", "RuPay"),
+        ("sbi_cb",  "SBI Cashback",     "Visa"),
+        ("sbi_pp",  "SBI PhonePe",      "Visa"),
+        ("hdfc_mil","HDFC Millennia",    "Visa"),
+        ("hdfc_swig","HDFC Swiggy",      "Visa"),
+        ("bob_eterna","BOB Eterna",      "RuPay"),
     ]
-    for cid, nm, bk, tp in default_cards:
+    for cid, nm, tp in default_cards:
         conn.execute(
-            "INSERT OR IGNORE INTO user_cards (user_id, card_id, name, bank, type) VALUES (?,?,?,?,?)",
-            (user_id, cid, nm, bk, tp))
+            "INSERT OR IGNORE INTO user_cards (user_id, card_id, name, type) VALUES (?,?,?,?)",
+            (user_id, cid, nm, tp))
 
     # Default people
     for nm in ["Sister", "Brother", "Dad"]:
@@ -141,7 +141,7 @@ def get_user_cards(user_id):
     conn = get_db()
     try:
         rows = conn.execute(
-            "SELECT card_id AS id, name, bank, type FROM user_cards WHERE user_id = ? ORDER BY name",
+            "SELECT card_id AS id, name, type FROM user_cards WHERE user_id = ? ORDER BY name",
             (user_id,)
         ).fetchall()
     except Exception:
@@ -239,7 +239,6 @@ def init_db():
             user_id INTEGER NOT NULL,
             card_id TEXT NOT NULL,
             name TEXT NOT NULL,
-            bank TEXT NOT NULL,
             type TEXT DEFAULT 'Other',
             FOREIGN KEY (user_id) REFERENCES users(id),
             UNIQUE(user_id, card_id)
@@ -254,6 +253,14 @@ def init_db():
         );
     """)
     conn.commit()
+
+    # Migration: drop bank column from user_cards
+    try:
+        conn.execute("ALTER TABLE user_cards DROP COLUMN bank")
+        conn.commit()
+    except Exception:
+        pass  # Column already dropped or didn't exist
+
     conn.close()
 
 init_db()
@@ -289,7 +296,7 @@ def _migrate_json_to_db():
             data = json.load(f)
         conn = get_db()
         for c in data.get("cards", []):
-            conn.execute("INSERT OR IGNORE INTO user_cards (user_id, card_id, name, bank, type) VALUES (?, ?, ?, ?, ?)", (uid, c["id"], c["name"], c["bank"], c.get("type", "Other")))
+            conn.execute("INSERT OR IGNORE INTO user_cards (user_id, card_id, name, type) VALUES (?, ?, ?, ?)", (uid, c["id"], c["name"], c.get("type", "Other")))
         conn.commit()
         conn.close()
         migrated = True
@@ -1230,10 +1237,9 @@ def settings():
         action = request.form.get("action")
 
         if action == "add_card":
-            card_id = sanitize(request.form["card_id"]).lower().replace(" ", "_")
             card_name = sanitize(request.form["card_name"])
-            card_bank = sanitize(request.form["card_bank"])
-            card_type = sanitize(request.form["card_type"])
+            card_id = card_name.lower().replace(" ", "_")
+            card_type = sanitize(request.form.get("card_type", ""))
             conn = get_db()
             try:
                 existing = conn.execute(
@@ -1241,11 +1247,11 @@ def settings():
                     (user_id, card_id)
                 ).fetchone()
                 if existing:
-                    flash("❌ Card ID already exists.", "danger")
+                    flash("❌ Card name already exists.", "danger")
                 else:
                     conn.execute(
-                        "INSERT INTO user_cards (user_id, card_id, name, bank, type) VALUES (?, ?, ?, ?, ?)",
-                        (user_id, card_id, card_name, card_bank, card_type)
+                        "INSERT INTO user_cards (user_id, card_id, name, type) VALUES (?, ?, ?, ?)",
+                        (user_id, card_id, card_name, card_type)
                     )
                     conn.commit()
                     flash(f"✅ Card '{card_name}' added!", "success")

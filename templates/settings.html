@@ -6,15 +6,14 @@
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header">
-                <i class="bi bi-credit-card text-blue"></i> Your Cards
+                <i class="bi bi-credit-card text-blue"></i> Your Bank / Card
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>Card</th>
-                                <th>Bank</th>
+                                <th>Bank / Card</th>
                                 <th>Type</th>
                                 <th></th>
                             </tr>
@@ -23,7 +22,6 @@
                             {% for card in cards %}
                             <tr>
                                 <td class="fw-semibold">{{ card.name }}</td>
-                                <td>{{ card.bank }}</td>
                                 <td><span class="badge badge-category bg-green">{{ card.type }}</span></td>
                                 <td>
                                     <form method="POST" action="/settings" style="display:inline"
@@ -42,24 +40,16 @@
             <div class="card-body border-top" style="border-color:var(--card-border)">
                 <form method="POST" action="/settings" class="row g-2">
                     <input type="hidden" name="action" value="add_card">
-                    <div class="col-md-4">
-                        <input type="text" class="form-control form-control-sm" name="card_id"
-                               placeholder="ID (e.g. hdfc_mil)" required>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-5">
                         <input type="text" class="form-control form-control-sm" name="card_name"
-                               placeholder="Name (e.g. HDFC Millennia)" required>
+                               placeholder="Bank / Card Name (e.g. SBI Cashback)" required>
                     </div>
-                    <div class="col-md-2">
-                        <input type="text" class="form-control form-control-sm" name="card_bank"
-                               placeholder="Bank" required>
+                    <div class="col-md-5">
+                        <input type="text" class="form-control form-control-sm" name="card_type"
+                               placeholder="Type (e.g. Visa, Mastercard, RuPay)">
                     </div>
                     <div class="col-md-2">
                         <button class="btn btn-sm btn-success w-100"><i class="bi bi-plus"></i> Add</button>
-                    </div>
-                    <div class="col-md-12">
-                        <input type="text" class="form-control form-control-sm" name="card_type"
-                               placeholder="Type (e.g. Visa, Mastercard, RuPay)">
                     </div>
                 </form>
             </div>
