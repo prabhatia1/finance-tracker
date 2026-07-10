@@ -322,14 +322,26 @@ def _migrate_json_to_db():
 
 _migrate_json_to_db()
 
-# ─── Sync Excel on Startup ────────────────────────────────────────────────────
-_excel_mtime = 0
-try:
-    init_excel()  # Create fresh Excel if missing
-    smart_sync()
-    _excel_mtime = EXCEL_PATH.stat().st_mtime
-except Exception as _e:
-    print(f"⚠️ Startup sync skipped: {_e}")
+# ─── Lazy Startup Sync (runs on first request, not at import time) ───────────
+_startup_done = False
+
+@app.before_request
+def _lazy_startup():
+    """Run init_excel + smart_sync exactly once, on the first real request.
+    This avoids crashes on PythonAnywhere when the WSGI worker imports the
+    module before the database tables exist, and is safe even on a fresh DB."""
+    global _startup_done
+    if _startup_done:
+        return
+    _startup_done = True
+
+    global _excel_mtime
+    try:
+        init_excel()
+        smart_sync()
+        _excel_mtime = EXCEL_PATH.stat().st_mtime if EXCEL_PATH.exists() else 0
+    except Exception as _e:
+        print(f"⚠️ Startup sync skipped: {_e}")
 
 # ─── Security Headers (applied to every response) ─────────────────────────
 @app.after_request
