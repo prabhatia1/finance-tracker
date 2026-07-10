@@ -39,6 +39,13 @@
         <div class="d-flex gap-2 flex-nowrap overflow-auto pb-1" style="-webkit-overflow-scrolling: touch;">
             <a href="/add" class="btn btn-success flex-shrink-0"><i class="bi bi-plus-lg"></i> Add</a>
             <a href="/reports" class="btn btn-outline-light flex-shrink-0"><i class="bi bi-bar-chart"></i> Reports</a>
+            <div class="btn-group flex-shrink-0">
+                <button class="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-download"></i> Export</button>
+                <ul class="dropdown-menu dropdown-menu-end" style="min-width:auto;">
+                    <li><a class="dropdown-item" href="/export/monthly"><i class="bi bi-file-earmark-excel me-1"></i> This Month</a></li>
+                    <li><a class="dropdown-item" href="/export/yearly"><i class="bi bi-file-earmark-excel me-1"></i> Full Year</a></li>
+                </ul>
+            </div>
             {% if session.get('username') == 'pratik' %}
             <a href="/open-excel" class="btn btn-outline-light flex-shrink-0"><i class="bi bi-file-earmark-excel"></i> Excel</a>
             {% endif %}

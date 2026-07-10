@@ -13,7 +13,7 @@ import re
 import calendar
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from io import StringIO
+from io import BytesIO, StringIO
 
 from flask import (
     Flask, render_template, request, redirect, url_for,
@@ -768,17 +768,246 @@ def export_csv(transactions):
 
 
 def export_monthly_excel(year, month, user_id=None):
-    """Generate Excel report using CSV (simple, universal)."""
+    """Generate Excel .xlsx for a single month using openpyxl."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
     conn = get_db()
     rows = conn.execute(
-        """SELECT date, description, amount, category, card_id, txn_type, notes, source
+        """SELECT date, description, amount, category, card_id, txn_type, notes, source, person
            FROM transactions
            WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND user_id = ?
            ORDER BY date, id""",
         (str(year), f"{month:02d}", user_id,)
     ).fetchall()
+    cards = {r["card_id"]: r["name"] for r in
+             conn.execute("SELECT card_id, name FROM user_cards WHERE user_id = ?", (user_id,)).fetchall()}
+    bal = conn.execute(
+        "SELECT start_balance, end_balance FROM monthly_balances WHERE month = ?",
+        (f"{year}-{month:02d}",)
+    ).fetchone()
     conn.close()
-    return export_csv(rows)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f"{year}-{month:02d}"
+
+    # Styles
+    hdr_font = Font(bold=True, color="FFFFFF", size=10)
+    hdr_fill = PatternFill("solid", fgColor="4472C4")
+    total_fill = PatternFill("solid", fgColor="E2EFDA")
+    total_font = Font(bold=True, size=10)
+    thin = Border(left=Side(style="thin"), right=Side(style="thin"),
+                  top=Side(style="thin"), bottom=Side(style="thin"))
+
+    # Title
+    ws.merge_cells("A1:I1")
+    ws["A1"] = f"Transactions — {year}-{month:02d}"
+    ws["A1"].font = Font(bold=True, size=14, color="4472C4")
+
+    # Headers
+    headers = ["Date", "Description", "Amount", "Category", "Card", "Type", "Notes", "Person", "Source"]
+    for c, h in enumerate(headers, 1):
+        cell = ws.cell(row=3, column=c, value=h)
+        cell.font = hdr_font
+        cell.fill = hdr_fill
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = thin
+
+    # Data rows
+    total_debit = total_credit = 0.0
+    for i, r in enumerate(rows, 4):
+        vals = [r["date"], r["description"], r["amount"],
+                r["category"], cards.get(r["card_id"], r["card_id"]),
+                r["txn_type"], r["notes"] or "", r["person"] or "", r["source"] or ""]
+        for c, v in enumerate(vals, 1):
+            cell = ws.cell(row=i, column=c, value=v)
+            cell.border = thin
+            cell.alignment = Alignment(horizontal="center" if c in (1, 3, 5, 6, 9) else "left")
+        if r["txn_type"] == "debit":
+            total_debit += r["amount"]
+        else:
+            total_credit += r["amount"]
+
+    # Summary rows
+    summary_row = len(rows) + 5
+    ws.cell(row=summary_row, column=1, value="SUMMARY").font = Font(bold=True, size=11, color="4472C4")
+    for label, val, col in [("Total Debit", total_debit, 2), ("Total Credit", total_credit, 3),
+                             ("Net", total_credit - total_debit, 4)]:
+        c = ws.cell(row=summary_row + 1, column=col, value=label)
+        c.font = total_font
+        c.fill = total_fill
+        c.border = thin
+        c = ws.cell(row=summary_row + 1, column=col + 1, value=round(val, 2))
+        c.font = total_font
+        c.fill = total_fill
+        c.border = thin
+
+    # Balances
+    if bal:
+        bal_row = summary_row + 3
+        ws.cell(row=bal_row, column=1, value="Opening Balance").font = total_font
+        ws.cell(row=bal_row, column=2, value=round(bal["start_balance"], 2)).font = total_font
+        ws.cell(row=bal_row + 1, column=1, value="Closing Balance").font = total_font
+        ws.cell(row=bal_row + 1, column=2, value=round(bal["end_balance"], 2)).font = total_font
+
+    # Column widths
+    widths = [12, 30, 12, 18, 16, 8, 25, 14, 10]
+    for c, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(c)].width = w
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
+
+
+def export_yearly_excel(year, user_id=None):
+    """Generate Excel .xlsx with one sheet per month plus a Summary sheet."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from calendar import month_name
+
+    conn = get_db()
+
+    hdr_font = Font(bold=True, color="FFFFFF", size=10)
+    hdr_fill = PatternFill("solid", fgColor="4472C4")
+    total_fill = PatternFill("solid", fgColor="E2EFDA")
+    total_font = Font(bold=True, size=10)
+    thin = Border(left=Side(style="thin"), right=Side(style="thin"),
+                  top=Side(style="thin"), bottom=Side(style="thin"))
+
+    cards = {r["card_id"]: r["name"] for r in
+             conn.execute("SELECT card_id, name FROM user_cards WHERE user_id = ?", (user_id,)).fetchall()}
+    headers = ["Date", "Description", "Amount", "Category", "Card", "Type", "Notes", "Person", "Source"]
+    month_data = {}
+    yearly_debit = yearly_credit = 0.0
+
+    for m in range(1, 13):
+        rows = conn.execute(
+            """SELECT date, description, amount, category, card_id, txn_type, notes, source, person
+               FROM transactions
+               WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND user_id = ?
+               ORDER BY date, id""",
+            (str(year), f"{m:02d}", user_id,)
+        ).fetchall()
+        if not rows and True:  # create sheet even if empty, for consistency
+            pass
+        month_data[m] = rows
+
+    wb = openpyxl.Workbook()
+    # Remove default sheet
+    default_ws = wb.active
+
+    for m in range(1, 13):
+        rows = month_data.get(m, [])
+        ws = wb.create_sheet(title=f"{m:02d} {month_name[m][:3]}")
+
+        # Title
+        ws.merge_cells("A1:I1")
+        ws["A1"] = f"{month_name[m]} {year}"
+        ws["A1"].font = Font(bold=True, size=14, color="4472C4")
+
+        # Headers
+        for c, h in enumerate(headers, 1):
+            cell = ws.cell(row=3, column=c, value=h)
+            cell.font = hdr_font
+            cell.fill = hdr_fill
+            cell.alignment = Alignment(horizontal="center")
+            cell.border = thin
+
+        total_debit = total_credit = 0.0
+        for i, r in enumerate(rows, 4):
+            vals = [r["date"], r["description"], r["amount"],
+                    r["category"], cards.get(r["card_id"], r["card_id"]),
+                    r["txn_type"], r["notes"] or "", r["person"] or "", r["source"] or ""]
+            for c, v in enumerate(vals, 1):
+                cell = ws.cell(row=i, column=c, value=v)
+                cell.border = thin
+                cell.alignment = Alignment(horizontal="center" if c in (1, 3, 5, 6, 9) else "left")
+            if r["txn_type"] == "debit":
+                total_debit += r["amount"]
+            else:
+                total_credit += r["amount"]
+
+        yearly_debit += total_debit
+        yearly_credit += total_credit
+
+        # Summary in each sheet
+        sr = len(rows) + 5
+        ws.cell(row=sr, column=1, value="SUMMARY").font = Font(bold=True, size=11, color="4472C4")
+        for label, val, col in [("Total Debit", total_debit, 2), ("Total Credit", total_credit, 3),
+                                 ("Net", total_credit - total_debit, 4)]:
+            c = ws.cell(row=sr + 1, column=col, value=label)
+            c.font = total_font; c.fill = total_fill; c.border = thin
+            c = ws.cell(row=sr + 1, column=col + 1, value=round(val, 2))
+            c.font = total_font; c.fill = total_fill; c.border = thin
+
+        # Balances from monthly_balances
+        bal = conn.execute(
+            "SELECT start_balance, end_balance FROM monthly_balances WHERE month = ?",
+            (f"{year}-{m:02d}",)
+        ).fetchone()
+        if bal:
+            br = sr + 3
+            ws.cell(row=br, column=1, value="Opening Balance").font = total_font
+            ws.cell(row=br, column=2, value=round(bal["start_balance"], 2)).font = total_font
+            ws.cell(row=br + 1, column=1, value="Closing Balance").font = total_font
+            ws.cell(row=br + 1, column=2, value=round(bal["end_balance"], 2)).font = total_font
+
+        # Column widths
+        for c, w in enumerate([12, 30, 12, 18, 16, 8, 25, 14, 10], 1):
+            ws.column_dimensions[get_column_letter(c)].width = w
+
+    # ── Summary sheet ──
+    ws_sum = wb.create_sheet(title="Summary", index=0)
+    ws_sum.merge_cells("A1:F1")
+    ws_sum["A1"] = f"Yearly Summary — {year}"
+    ws_sum["A1"].font = Font(bold=True, size=14, color="4472C4")
+
+    sum_headers = ["Month", "Transactions", "Total Debit", "Total Credit", "Net", "Closing Balance"]
+    for c, h in enumerate(sum_headers, 1):
+        cell = ws_sum.cell(row=3, column=c, value=h)
+        cell.font = hdr_font; cell.fill = hdr_fill; cell.alignment = Alignment(horizontal="center"); cell.border = thin
+
+    for m in range(1, 13):
+        rows = month_data.get(m, [])
+        bal = conn.execute(
+            "SELECT end_balance FROM monthly_balances WHERE month = ?",
+            (f"{year}-{m:02d}",)
+        ).fetchone()
+        debit = sum(r["amount"] for r in rows if r["txn_type"] == "debit")
+        credit = sum(r["amount"] for r in rows if r["txn_type"] == "credit")
+        vals = [f"{m:02d} {month_name[m][:3]}", len(rows), round(debit, 2), round(credit, 2),
+                round(credit - debit, 2), round(bal["end_balance"], 2) if bal else ""]
+        for c, v in enumerate(vals, 1):
+            cell = ws_sum.cell(row=3 + m, column=c, value=v)
+            cell.border = thin
+            cell.alignment = Alignment(horizontal="center")
+
+    # Year total row
+    yr_row = 16
+    ws_sum.cell(row=yr_row, column=1, value="YEAR TOTAL").font = total_font
+    ws_sum.cell(row=yr_row, column=1).fill = total_fill
+    ws_sum.cell(row=yr_row, column=1).border = thin
+    for col, val in [(2, sum(len(month_data[m]) for m in range(1, 13))),
+                      (3, round(yearly_debit, 2)), (4, round(yearly_credit, 2)),
+                      (5, round(yearly_credit - yearly_debit, 2))]:
+        c = ws_sum.cell(row=yr_row, column=col, value=val)
+        c.font = total_font; c.fill = total_fill; c.border = thin
+
+    conn.close()
+
+    # Remove default empty sheet
+    if "Sheet" in wb.sheetnames:
+        del wb["Sheet"]
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
 
 
 # ─── Flask Routes ─────────────────────────────────────────────────────────────
@@ -1115,10 +1344,9 @@ def export_data():
 
 
 @app.route("/export/monthly")
-
 @login_required
 def export_monthly():
-    """Export monthly report as CSV."""
+    """Export monthly report as .xlsx."""
 
     user_id = session["user_id"]
     today = date.today()
@@ -1127,10 +1355,28 @@ def export_monthly():
     output = export_monthly_excel(year, month, user_id)
     return Response(
         output.getvalue(),
-        mimetype="text/csv",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
             "Content-Disposition":
-            f"attachment;filename=report_{year}_{month:02d}.csv"
+            f"attachment;filename=report_{year}_{month:02d}.xlsx"
+        }
+    )
+
+
+@app.route("/export/yearly")
+@login_required
+def export_yearly():
+    """Export full-year .xlsx with all monthly sheets + summary."""
+
+    user_id = session["user_id"]
+    year = int(request.args.get("year", date.today().year))
+    output = export_yearly_excel(year, user_id)
+    return Response(
+        output.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition":
+            f"attachment;filename=finance_tracker_{year}.xlsx"
         }
     )
 
