@@ -19,9 +19,24 @@ from flask import (
     Flask, render_template, request, redirect, url_for,
     flash, session, send_file, jsonify, Response
 )
-from flask_wtf.csrf import CSRFProtect
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+# ─── Optional imports (CSRF, Rate Limiting) ─────────────────────────────
+try:
+    from flask_wtf.csrf import CSRFProtect
+    _HAS_FLASK_WTF = True
+except ImportError:
+    CSRFProtect = None
+    _HAS_FLASK_WTF = False
+    print("[warn] flask-wtf not installed — CSRF protection disabled")
+
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    _HAS_FLASK_LIMITER = True
+except ImportError:
+    Limiter = None
+    get_remote_address = None
+    _HAS_FLASK_LIMITER = False
+    print("[warn] flask-limiter not installed — rate limiting disabled")
 
 # ─── Setup ───────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
@@ -56,15 +71,33 @@ except Exception:
     app.secret_key = os.urandom(32).hex()
 
 # ─── CSRF Protection ────────────────────────────────────────────────────
-csrf = CSRFProtect(app)
+if _HAS_FLASK_WTF:
+    csrf = CSRFProtect(app)
+else:
+    csrf = None
+    # Register dummy csrf_token for templates so they don't crash
+    @app.context_processor
+    def _noop_csrf():
+        def csrf_token():
+            from markupsafe import Markup
+            return Markup('<input type="hidden" name="csrf_token" value="">')
+        return dict(csrf_token=csrf_token)
 
 # ─── Rate Limiting ─────────────────────────────────────────────────────
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"
-)
+if _HAS_FLASK_LIMITER:
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"],
+        storage_uri="memory://"
+    )
+else:
+    class _NoopLimiter:
+        def limit(self, *a, **kw):
+            def deco(f):
+                return f
+            return deco
+    limiter = _NoopLimiter()
 
 # ─── Session Security ─────────────────────────────────────────────────────
 app.config['SESSION_COOKIE_HTTPONLY'] = True      # JS can't read cookie
