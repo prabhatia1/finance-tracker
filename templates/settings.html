@@ -26,6 +26,7 @@
                                 <td>
                                     <form method="POST" action="/settings" style="display:inline"
                                           onsubmit="return confirm('Remove {{ card.name }}?')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="action" value="remove_card">
                                         <input type="hidden" name="card_id" value="{{ card.id }}">
                                         <button class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
@@ -40,6 +41,7 @@
             <div class="card-body border-top" style="border-color:var(--card-border)">
                 <form method="POST" action="/settings" class="row g-2">
                     <input type="hidden" name="action" value="add_card">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="col-md-5">
                         <input type="text" class="form-control form-control-sm" name="card_name"
                                placeholder="Bank / Card Name (e.g. SBI Cashback)" required>
@@ -91,6 +93,7 @@
                                 <td>
                                     <form method="POST" action="/settings" style="display:inline"
                                           onsubmit="return confirm('Remove {{ cat.name }}?')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="action" value="remove_category">
                                         <input type="hidden" name="cat_name" value="{{ cat.name }}">
                                         <button class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
@@ -105,6 +108,7 @@
             <div class="card-body border-top" style="border-color:var(--card-border)">
                 <form method="POST" action="/settings" class="row g-2">
                     <input type="hidden" name="action" value="add_category">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="col-md-4">
                         <input type="text" class="form-control form-control-sm" name="cat_name"
                                placeholder="Category name" required>
@@ -180,6 +184,7 @@
                                 <td>
                                     <form method="POST" action="/settings" style="display:inline"
                                           onsubmit="return confirm('Remove {{ p.name }}?')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="action" value="remove_person">
                                         <input type="hidden" name="person_name" value="{{ p.name }}">
                                         <button class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
@@ -194,6 +199,7 @@
             <div class="card-body border-top" style="border-color:var(--card-border)">
                 <form method="POST" action="/settings" class="row g-2">
                     <input type="hidden" name="action" value="add_person">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="col-md-4">
                         <input type="text" class="form-control form-control-sm" name="person_name"
                                placeholder="Person name" required>
@@ -228,6 +234,7 @@
     <div class="card-body">
         <p class="small text-muted mb-2">Set a security word to reset your password if you forget it.</p>
         <form method="POST" action="/update-security-word" class="row g-2 align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="col-md-5">
                 <label class="form-label small">Current Password</label>
                 <input type="password" class="form-control form-control-sm" name="current_password" required>
@@ -250,6 +257,7 @@
     </div>
     <div class="card-body">
         <form method="POST" action="/change-password" class="row g-2 align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="col-md-4">
                 <label class="form-label small">Current Password</label>
                 <input type="password" class="form-control form-control-sm" name="current_password" required>

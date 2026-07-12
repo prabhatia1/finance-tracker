@@ -30,6 +30,7 @@
                                 <td><strong>{{ m.name }}</strong></td>
                                 <td class="text-end">
                                     <form method="POST" action="/balances" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="month" value="{{ m.key }}">
                                         <input type="hidden" name="field" value="start_balance">
                                         <input type="number" step="0.01" name="value" 
@@ -45,6 +46,7 @@
                                 <td class="text-end text-muted">₹{{ "%.2f"|format(m.expected_end) }}</td>
                                 <td class="text-end">
                                     <form method="POST" action="/balances" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="month" value="{{ m.key }}">
                                         <input type="hidden" name="field" value="end_balance">
                                         <input type="number" step="0.01" name="value" 

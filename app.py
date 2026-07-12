@@ -19,6 +19,9 @@ from flask import (
     Flask, render_template, request, redirect, url_for,
     flash, session, send_file, jsonify, Response
 )
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # ─── Setup ───────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
@@ -52,11 +55,21 @@ try:
 except Exception:
     app.secret_key = os.urandom(32).hex()
 
+# ─── CSRF Protection ────────────────────────────────────────────────────
+csrf = CSRFProtect(app)
+
+# ─── Rate Limiting ─────────────────────────────────────────────────────
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
 # ─── Session Security ─────────────────────────────────────────────────────
 app.config['SESSION_COOKIE_HTTPONLY'] = True      # JS can't read cookie
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'      # blocks CSRF from external sites
-if not app.debug:
-    app.config['SESSION_COOKIE_SECURE'] = True     # HTTPS only in production
+app.config['SESSION_COOKIE_SECURE'] = False        # Set True for HTTPS production
 
 # ─── Sanitization helper ──────────────────────────────────────────────────
 import html as _html
@@ -65,6 +78,44 @@ def sanitize(text):
     if not text:
         return ""
     return _html.escape(re.sub(r'<[^>]*>', '', text)).strip()
+
+
+# ─── Password & Input Validation ────────────────────────────────────────────
+class PasswordValidator:
+    """Validate password strength."""
+    MIN_LENGTH = 6
+
+    @staticmethod
+    def validate(password):
+        errors = []
+        if len(password) < PasswordValidator.MIN_LENGTH:
+            errors.append(f"At least {PasswordValidator.MIN_LENGTH} characters")
+        if not re.search(r'[A-Z]', password):
+            errors.append("One uppercase letter")
+        if not re.search(r'[a-z]', password):
+            errors.append("One lowercase letter")
+        if not re.search(r'\d', password):
+            errors.append("One digit")
+        if errors:
+            return False, " • ".join(errors)
+        return True, ""
+
+    @staticmethod
+    def validate_username(username):
+        return bool(re.match(r'^[a-zA-Z0-9_]+$', username)) and 3 <= len(username) <= 20
+
+    @staticmethod
+    def validate_amount(amount):
+        try:
+            return 0.01 <= float(amount) <= 99_999_999
+        except (ValueError, TypeError):
+            return False
+
+    @staticmethod
+    def sanitize(text, max_length=500):
+        if not isinstance(text, str):
+            return ""
+        return _html.escape(re.sub(r'<[^>]*>', '', text)).strip()[:max_length]
 
 # ─── Seed Data for New Users ────────────────────────────────────────────────
 def seed_new_user(user_id):
@@ -366,11 +417,14 @@ def server_error(e):
 from werkzeug.security import generate_password_hash, check_password_hash
 
 @app.route("/login", methods=["GET", "POST"])
-
+@limiter.limit("5 per minute")
 def login():
     if request.method == "POST":
         username = sanitize(request.form.get("username", "")).lower()
         password = request.form.get("password", "")
+        if not PasswordValidator.validate_username(username):
+            flash("Invalid username format.", "danger")
+            return render_template("login.html")
         conn = get_db()
         user = conn.execute(
             "SELECT id, username, password_hash, display_name FROM users WHERE username = ?",
@@ -388,7 +442,7 @@ def login():
     return render_template("login.html")
 
 @app.route("/register", methods=["GET", "POST"])
-
+@limiter.limit("3 per hour")
 def register():
     if request.method == "POST":
         username = sanitize(request.form.get("username", "")).lower()
@@ -401,8 +455,9 @@ def register():
         if password != confirm:
             flash("Passwords do not match.", "danger")
             return render_template("register.html")
-        if len(password) < 4:
-            flash("Password must be at least 4 characters.", "danger")
+        valid_pw, msg = PasswordValidator.validate(password)
+        if not valid_pw:
+            flash(f"Password too weak: {msg}", "danger")
             return render_template("register.html")
         conn = get_db()
         existing = conn.execute(
@@ -427,6 +482,7 @@ def register():
 
 
 @app.route("/forgot-password", methods=["GET", "POST"])
+@limiter.limit("3 per minute")
 def forgot_password():
     """Reset password using security word verification."""
     if request.method == "POST":
@@ -443,8 +499,9 @@ def forgot_password():
             flash("Passwords do not match.", "danger")
             return render_template("forgot_password.html", username=username)
 
-        if len(new_password) < 4:
-            flash("Password must be at least 4 characters.", "danger")
+        valid_pw, msg = PasswordValidator.validate(new_password)
+        if not valid_pw:
+            flash(f"Password too weak: {msg}", "danger")
             return render_template("forgot_password.html", username=username)
 
         conn = get_db()
@@ -768,229 +825,17 @@ def export_csv(transactions):
 
 
 def export_monthly_excel(year, month, user_id=None):
-    """Generate Excel .xlsx for a single month — day-wise transaction list."""
-    import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    from openpyxl.utils import get_column_letter
-    from calendar import monthrange, month_name
-
+    """Generate Excel report using CSV (simple, universal)."""
     conn = get_db()
     rows = conn.execute(
-        """SELECT date, description, amount, category, card_id, txn_type, notes, person
+        """SELECT date, description, amount, category, card_id, txn_type, notes, source
            FROM transactions
            WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND user_id = ?
            ORDER BY date, id""",
         (str(year), f"{month:02d}", user_id,)
     ).fetchall()
-    cards = {r["card_id"]: r["name"] for r in
-             conn.execute("SELECT card_id, name FROM user_cards WHERE user_id = ?", (user_id,)).fetchall()}
-    bal = conn.execute(
-        "SELECT start_balance, end_balance FROM monthly_balances WHERE month = ?",
-        (f"{year}-{month:02d}",)
-    ).fetchone()
     conn.close()
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = f"{month_name[month]} {year}"
-
-    # ── Styles ──
-    hdr_fill = PatternFill("solid", fgColor="4472C4")
-    hdr_font = Font(bold=True, color="FFFFFF", size=10)
-    total_fill = PatternFill("solid", fgColor="E2EFDA")
-    total_font = Font(bold=True, size=10)
-    bal_fill = PatternFill("solid", fgColor="D9E2F3")
-    thin = Border(left=Side(style="thin"), right=Side(style="thin"),
-                  top=Side(style="thin"), bottom=Side(style="thin"))
-
-    # Sheet title
-    ws.merge_cells("A1:H1")
-    ws["A1"] = f"Transactions — {month_name[month]} {year}"
-    ws["A1"].font = Font(bold=True, size=14, color="4472C4")
-
-    # ── Header row ──
-    headers = ["Date", "Day", "Description", "Category", "Card", "Debit (₹)", "Credit (₹)", "Notes"]
-    for c, h in enumerate(headers, 1):
-        cell = ws.cell(row=3, column=c, value=h)
-        cell.font = hdr_font
-        cell.fill = hdr_fill
-        cell.alignment = Alignment(horizontal="center")
-        cell.border = thin
-
-    # ── Data rows ──
-    total_debit = total_credit = 0.0
-    days_in_month = monthrange(year, month)[1]
-    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-
-    for i, r in enumerate(rows, 4):
-        dt = date.fromisoformat(r["date"])
-        day_name = day_names[dt.weekday()]
-        vals = [
-            r["date"], day_name, r["description"], r["category"],
-            cards.get(r["card_id"], r["card_id"]),
-            r["amount"] if r["txn_type"] == "debit" else "",
-            r["amount"] if r["txn_type"] == "credit" else "",
-            r["notes"] or ""
-        ]
-        for c, v in enumerate(vals, 1):
-            cell = ws.cell(row=i, column=c, value=v)
-            cell.border = thin
-            cell.alignment = Alignment(horizontal="center" if c in (1, 2, 5, 6, 7) else "left")
-        if r["txn_type"] == "debit":
-            total_debit += r["amount"]
-        else:
-            total_credit += r["amount"]
-
-    # ── Empty separator ──
-    sr = len(rows) + 5
-
-    # ── Monthly Totals ──
-    ws.cell(row=sr, column=1, value="MONTHLY TOTALS").font = Font(bold=True, size=11, color="4472C4")
-    for label, val, col in [
-        ("Total Debit", total_debit, 2), ("Total Credit", total_credit, 4),
-        ("Net", total_credit - total_debit, 6)
-    ]:
-        c = ws.cell(row=sr + 1, column=col, value=label)
-        c.font = total_font; c.fill = total_fill; c.border = thin
-        c = ws.cell(row=sr + 1, column=col + 1, value=round(val, 2))
-        c.font = total_font; c.fill = total_fill; c.border = thin
-        ws.cell(row=sr + 1, column=col + 1).number_format = '#,##0.00'
-
-    # ── Opening / Closing Balance ──
-    if bal:
-        br = sr + 3
-        ws.cell(row=br, column=1, value="BALANCES").font = Font(bold=True, size=11, color="4472C4")
-        for label, val, col in [("Opening Balance", bal["start_balance"], 2),
-                                 ("Closing Balance", bal["end_balance"], 4)]:
-            c = ws.cell(row=br + 1, column=col, value=label)
-            c.font = total_font; c.fill = bal_fill; c.border = thin
-            c = ws.cell(row=br + 1, column=col + 1, value=round(val, 2))
-            c.font = total_font; c.fill = bal_fill; c.border = thin
-            ws.cell(row=br + 1, column=col + 1).number_format = '#,##0.00'
-
-    # ── Column widths ──
-    for c, w in enumerate([13, 8, 35, 18, 16, 12, 12, 25], 1):
-        ws.column_dimensions[get_column_letter(c)].width = w
-
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return output
-
-
-def export_yearly_excel(year, user_id=None):
-    """Generate Excel .xlsx with one sheet per month — each a day-wise transaction list."""
-    import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    from openpyxl.utils import get_column_letter
-    from calendar import monthrange, month_name
-
-    conn = get_db()
-
-    hdr_fill = PatternFill("solid", fgColor="4472C4")
-    hdr_font = Font(bold=True, color="FFFFFF", size=10)
-    total_fill = PatternFill("solid", fgColor="E2EFDA")
-    total_font = Font(bold=True, size=10)
-    bal_fill = PatternFill("solid", fgColor="D9E2F3")
-    thin = Border(left=Side(style="thin"), right=Side(style="thin"),
-                  top=Side(style="thin"), bottom=Side(style="thin"))
-
-    cards = {r["card_id"]: r["name"] for r in
-             conn.execute("SELECT card_id, name FROM user_cards WHERE user_id = ?", (user_id,)).fetchall()}
-
-    wb = openpyxl.Workbook()
-    default_ws = wb.active
-    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    headers = ["Date", "Day", "Description", "Category", "Card", "Debit (₹)", "Credit (₹)", "Notes"]
-    yearly_debit = yearly_credit = 0.0
-
-    for m in range(1, 13):
-        rows = conn.execute(
-            """SELECT date, description, amount, category, card_id, txn_type, notes, person
-               FROM transactions
-               WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ? AND user_id = ?
-               ORDER BY date, id""",
-            (str(year), f"{m:02d}", user_id,)
-        ).fetchall()
-        if not rows:
-            continue
-
-        bal = conn.execute(
-            "SELECT start_balance, end_balance FROM monthly_balances WHERE month = ?",
-            (f"{year}-{m:02d}",)
-        ).fetchone()
-
-        ws = wb.create_sheet(title=f"{m:02d} {month_name[m][:3]}")
-
-        # Title
-        ws.merge_cells("A1:H1")
-        ws["A1"] = f"Transactions — {month_name[m]} {year}"
-        ws["A1"].font = Font(bold=True, size=14, color="4472C4")
-
-        # Headers
-        for c, h in enumerate(headers, 1):
-            cell = ws.cell(row=3, column=c, value=h)
-            cell.font = hdr_font; cell.fill = hdr_fill
-            cell.alignment = Alignment(horizontal="center"); cell.border = thin
-
-        total_debit = total_credit = 0.0
-        for i, r in enumerate(rows, 4):
-            dt = date.fromisoformat(r["date"])
-            vals = [
-                r["date"], day_names[dt.weekday()], r["description"], r["category"],
-                cards.get(r["card_id"], r["card_id"]),
-                r["amount"] if r["txn_type"] == "debit" else "",
-                r["amount"] if r["txn_type"] == "credit" else "",
-                r["notes"] or ""
-            ]
-            for c, v in enumerate(vals, 1):
-                cell = ws.cell(row=i, column=c, value=v)
-                cell.border = thin
-                cell.alignment = Alignment(horizontal="center" if c in (1,2,5,6,7) else "left")
-            if r["txn_type"] == "debit":
-                total_debit += r["amount"]
-            else:
-                total_credit += r["amount"]
-
-        yearly_debit += total_debit
-        yearly_credit += total_credit
-
-        # Summary
-        sr = len(rows) + 5
-        ws.cell(row=sr, column=1, value="MONTHLY TOTALS").font = Font(bold=True, size=11, color="4472C4")
-        for label, val, col in [("Total Debit", total_debit, 2), ("Total Credit", total_credit, 4),
-                                 ("Net", total_credit - total_debit, 6)]:
-            c = ws.cell(row=sr+1, column=col, value=label)
-            c.font = total_font; c.fill = total_fill; c.border = thin
-            c = ws.cell(row=sr+1, column=col+1, value=round(val, 2))
-            c.font = total_font; c.fill = total_fill; c.border = thin
-            ws.cell(row=sr+1, column=col+1).number_format = '#,##0.00'
-
-        # Balances
-        if bal:
-            br = sr + 3
-            ws.cell(row=br, column=1, value="BALANCES").font = Font(bold=True, size=11, color="4472C4")
-            for label, val, col in [("Opening Balance", bal["start_balance"], 2),
-                                     ("Closing Balance", bal["end_balance"], 4)]:
-                c = ws.cell(row=br+1, column=col, value=label)
-                c.font = total_font; c.fill = bal_fill; c.border = thin
-                c = ws.cell(row=br+1, column=col+1, value=round(val, 2))
-                c.font = total_font; c.fill = bal_fill; c.border = thin
-                ws.cell(row=br+1, column=col+1).number_format = '#,##0.00'
-
-        # Column widths
-        for c, w in enumerate([13, 8, 35, 18, 16, 12, 12, 25], 1):
-            ws.column_dimensions[get_column_letter(c)].width = w
-
-    # Remove default empty sheet if it exists
-    if "Sheet" in wb.sheetnames:
-        del wb["Sheet"]
-
-    conn.close()
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return output
+    return export_csv(rows)
 
 
 # ─── Flask Routes ─────────────────────────────────────────────────────────────
@@ -1329,7 +1174,7 @@ def export_data():
 @app.route("/export/monthly")
 @login_required
 def export_monthly():
-    """Export monthly report as .xlsx."""
+    """Export monthly report as CSV."""
 
     user_id = session["user_id"]
     today = date.today()
@@ -1338,28 +1183,10 @@ def export_monthly():
     output = export_monthly_excel(year, month, user_id)
     return Response(
         output.getvalue(),
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        mimetype="text/csv",
         headers={
             "Content-Disposition":
-            f"attachment;filename=report_{year}_{month:02d}.xlsx"
-        }
-    )
-
-
-@app.route("/export/yearly")
-@login_required
-def export_yearly():
-    """Export full-year .xlsx with all monthly sheets + summary."""
-
-    user_id = session["user_id"]
-    year = int(request.args.get("year", date.today().year))
-    output = export_yearly_excel(year, user_id)
-    return Response(
-        output.getvalue(),
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition":
-            f"attachment;filename=finance_tracker_{year}.xlsx"
+            f"attachment;filename=report_{year}_{month:02d}.csv"
         }
     )
 
@@ -1765,18 +1592,20 @@ def cashback_page():
 @app.route("/open-excel")
 @login_required
 def open_excel():
-    """Download yearly Excel report with all monthly sheets + summary."""
-    user_id = session["user_id"]
-    year = date.today().year
-    output = export_yearly_excel(year, user_id)
-    return Response(
-        output.getvalue(),
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition":
-            f"attachment;filename=finance_tracker_{year}.xlsx"
-        }
-    )
+    """Download the Excel file (instead of opening on server)."""
+    if session.get("username") != "pratik":
+        flash("⛔ Excel download is only available for the primary user.", "danger")
+        return redirect(request.referrer or url_for("index"))
+    try:
+        return send_file(
+            EXCEL_PATH,
+            as_attachment=True,
+            download_name="expense_tracker.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        flash(f"❌ Could not serve Excel file: {e}", "danger")
+        return redirect(request.referrer or url_for("index"))
 
 
 @app.route("/backup-download")

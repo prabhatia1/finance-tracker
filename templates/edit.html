@@ -9,6 +9,7 @@
             </div>
             <div class="card-body p-3 p-md-4">
                 <form method="POST" action="/edit/{{ txn.id }}" onsubmit="document.querySelector('.btn-submit').disabled=true; this.querySelector('.btn-submit').innerHTML='⏳ Saving...'">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="row g-3">
                         <div class="col-6 col-md-4">
                             <label class="form-label">Date</label>

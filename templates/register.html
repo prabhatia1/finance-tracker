@@ -46,6 +46,7 @@
                         {% endif %}
                     {% endwith %}
                     <form method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label small">Username</label>
                             <input type="text" name="username" class="form-control" placeholder="Choose a username" required autofocus>
