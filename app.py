@@ -340,6 +340,21 @@ try:
     conn.close()
 except Exception:
     pass
+
+# ─── Claim orphan transactions (old DB without user_id) ─────────────────
+try:
+    conn = get_db()
+    first_user = conn.execute("SELECT id FROM users ORDER BY id LIMIT 1").fetchone()
+    if first_user:
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.execute("UPDATE transactions SET user_id = ? WHERE user_id IS NULL", (first_user["id"],))
+        conn.commit()
+        conn.execute("PRAGMA foreign_keys = ON")
+        print(f"[migrate] Claimed orphan transactions → user {first_user['id']}")
+    conn.close()
+except Exception:
+    pass
+
 def _migrate_json_to_db():
     conn = get_db()
     card_count = conn.execute("SELECT COUNT(*) FROM user_cards").fetchone()[0]
@@ -476,6 +491,16 @@ def register():
         conn.commit()
         conn.close()
         seed_new_user(user_id)
+        # Claim orphan transactions (from old DB, no user_id) for this new user
+        try:
+            conn2 = get_db()
+            conn2.execute("PRAGMA foreign_keys = OFF")
+            conn2.execute("UPDATE transactions SET user_id = ? WHERE user_id IS NULL", (user_id,))
+            conn2.commit()
+            conn2.execute("PRAGMA foreign_keys = ON")
+            conn2.close()
+        except Exception:
+            pass
         flash("Account created! Please log in.", "success")
         return redirect(url_for("login"))
     return render_template("register.html")
