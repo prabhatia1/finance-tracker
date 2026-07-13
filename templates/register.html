@@ -33,7 +33,8 @@
             margin: 0;
             padding: 20px 0;
         }
-        .form-label, .form-text, .text-muted, h4, h4 small, p, a, .small, strong.small {
+        .form-label, .form-text, .text-muted, h4, h4 small, p, a, .small, strong.small,
+        .strength-item span {
             color: var(--text-primary) !important;
         }
 
@@ -432,7 +433,8 @@
         }
 
         function checkPasswordMatch() {
-            const match = pwInput.value === confirmInput.value && pwInput.value.length > 0;
+            const match = pwInput.value.length > 0 && confirmInput.value.length > 0
+                       && pwInput.value === confirmInput.value;
             matchStatus.classList.toggle('active', confirmInput.value.length > 0);
             matchStatus.className = match ? 'match-status active success' : 'match-status active error';
             matchStatus.innerHTML = match
