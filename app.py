@@ -79,8 +79,7 @@ else:
     @app.context_processor
     def _noop_csrf():
         def csrf_token():
-            from markupsafe import Markup
-            return Markup('<input type="hidden" name="csrf_token" value="">')
+            return ""
         return dict(csrf_token=csrf_token)
 
 # ─── Rate Limiting ─────────────────────────────────────────────────────
