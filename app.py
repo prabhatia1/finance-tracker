@@ -494,9 +494,10 @@ def register():
     if request.method == "POST":
         username = sanitize(request.form.get("username", "")).lower()
         display_name = sanitize(request.form.get("display_name", ""))
+        security_word = sanitize(request.form.get("security_word", ""))
         password = request.form.get("password", "")
         confirm = request.form.get("confirm", "")
-        if not username or not display_name or not password:
+        if not username or not display_name or not security_word or not password:
             flash("All fields are required.", "danger")
             return render_template("register.html")
         if password != confirm:
@@ -516,8 +517,8 @@ def register():
             return render_template("register.html")
         pw_hash = generate_password_hash(password)
         cur = conn.execute(
-            "INSERT INTO users (username, password_hash, display_name) VALUES (?, ?, ?)",
-            (username, pw_hash, display_name)
+            "INSERT INTO users (username, password_hash, display_name, security_word) VALUES (?, ?, ?, ?)",
+            (username, pw_hash, display_name, security_word)
         )
         user_id = cur.lastrowid
         conn.commit()
