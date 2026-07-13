@@ -44,21 +44,31 @@
                         </div>
                         <div class="col-6 col-md-6">
                             <label class="form-label">Bank / Card <span class="text-red">*</span></label>
-                            <select class="form-select" name="card_id" required>
-                                <option value="" disabled>— Select —</option>
-                                {% for card in cards %}
-                                <option value="{{ card.id }}" {% if txn.card_id == card.id %}selected{% endif %}>{{ card.name }}</option>
-                                {% endfor %}
-                            </select>
+                            <div class="input-group">
+                                <select class="form-select" name="card_id" required>
+                                    <option value="" disabled>— Select —</option>
+                                    {% for card in cards %}
+                                    <option value="{{ card.id }}" {% if txn.card_id == card.id %}selected{% endif %}>{{ card.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#addCardModal">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="col-6 col-md-6">
                             <label class="form-label">Person <small class="text-secondary-custom">(optional)</small></label>
-                            <select class="form-select" name="person">
-                                <option value="" {% if not txn.person %}selected{% endif %}>— None —</option>
-                                {% for p in persons %}
-                                <option value="{{ p }}" {% if txn.person == p %}selected{% endif %}>{{ p }}</option>
-                                {% endfor %}
-                            </select>
+                            <div class="input-group">
+                                <select class="form-select" name="person">
+                                    <option value="" {% if not txn.person %}selected{% endif %}>— None —</option>
+                                    {% for p in persons %}
+                                    <option value="{{ p }}" {% if txn.person == p %}selected{% endif %}>{{ p }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#addPersonModal">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="col-6 col-md-6">
                             <label class="form-label text-green">💰 Cashback</label>
@@ -79,6 +89,56 @@
                     </div>
                 </form>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Person Modal -->
+<div class="modal fade" id="addPersonModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-person-plus text-info"></i> Add Person</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/settings" onsubmit="return document.getElementById('newPersonName').value.trim() !== ''">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="add_person">
+                <input type="hidden" name="next" value="{{ request.url }}">
+                <div class="modal-body">
+                    <input type="text" id="newPersonName" class="form-control" name="person_name"
+                           placeholder="Person name" required autofocus>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> Add Person</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Bank/Card Modal -->
+<div class="modal fade" id="addCardModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-credit-card text-blue"></i> Add Bank / Card</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/settings" onsubmit="return document.getElementById('newCardName').value.trim() !== ''">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="add_card">
+                <input type="hidden" name="next" value="{{ request.url }}">
+                <div class="modal-body">
+                    <input type="text" id="newCardName" class="form-control mb-2" name="card_name"
+                           placeholder="Bank / Card name (e.g. SBI Cashback)" required>
+                    <input type="text" class="form-control" name="card_type"
+                           placeholder="Type (e.g. Visa, Mastercard, RuPay)">
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> Add Card</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

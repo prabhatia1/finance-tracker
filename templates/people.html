@@ -4,8 +4,11 @@
 <div class="row g-3 mb-4">
     <div class="col-12">
         <div class="card">
-            <div class="card-header">
-                <i class="bi bi-people text-blue"></i> Friends & Family — Balances
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people text-blue"></i> Friends & Family — Balances</span>
+                <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#addPersonModal">
+                    <i class="bi bi-plus"></i> Add Person
+                </button>
             </div>
             <div class="card-body p-0">
                 {% if people %}
@@ -140,6 +143,30 @@
                     <strong>How it works:</strong> When you pay for a friend/family member using your card, add a transaction with their name in the <strong>"Person"</strong> field (debit = you paid for them). When they pay you back, add a credit transaction with their name. The balance shows who owes whom.
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Person Modal -->
+<div class="modal fade" id="addPersonModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-person-plus text-info"></i> Add Person</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/settings" onsubmit="return document.getElementById('newPersonName').value.trim() !== ''">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="add_person">
+                <input type="hidden" name="next" value="{{ request.url }}">
+                <div class="modal-body">
+                    <input type="text" id="newPersonName" class="form-control" name="person_name"
+                           placeholder="Person name" required autofocus>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> Add Person</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

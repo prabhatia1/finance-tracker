@@ -1520,7 +1520,7 @@ def settings():
                 flash("🗑️ Person removed", "info")
             people = [{"name": p["name"]} for p in get_user_people(user_id)]
 
-        return redirect(url_for("settings"))
+        return redirect(request.form.get("next") or url_for("settings"))
 
     return render_template("settings.html", cards=cards, categories=categories, people=people, balance_map=balance_map)
 
