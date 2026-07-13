@@ -44,18 +44,18 @@ DB_PATH = BASE_DIR / "finance.db"
 CARDS_PATH = BASE_DIR / "cards.json"
 CATEGORIES_PATH = BASE_DIR / "categories.json"
 PEOPLE_PATH = BASE_DIR / "people.json"
-EXCEL_PATH = BASE_DIR / "expense_tracker.xlsx"
+# EXCEL_PATH = BASE_DIR / "expense_tracker.xlsx"
 SECRET_KEY_PATH = BASE_DIR / ".secret_key"
 
-# Import Excel sync
-from excel_sync import (
-    read_transactions_from_excel,
-    add_transaction_to_excel,
-    excel_sync_to_db,
-    db_sync_to_excel,
-    smart_sync,
-    init_excel,
-)
+# # Import Excel sync
+# from excel_sync import (
+#     read_transactions_from_excel,
+#     add_transaction_to_excel,
+#     excel_sync_to_db,
+#     db_sync_to_excel,
+#     smart_sync,
+#     init_excel,
+# )
 
 # Import cashback — labels for dashboard display
 from cashback import CARD_CB_LABELS
@@ -425,21 +425,21 @@ _startup_done = False
 
 @app.before_request
 def _lazy_startup():
-    """Run init_excel + smart_sync exactly once, on the first real request.
-    This avoids crashes on PythonAnywhere when the WSGI worker imports the
-    module before the database tables exist, and is safe even on a fresh DB."""
+    # """Run init_excel + smart_sync exactly once, on the first real request.
+    # This avoids crashes on PythonAnywhere when the WSGI worker imports the
+    # module before the database tables exist, and is safe even on a fresh DB."""
     global _startup_done
     if _startup_done:
         return
     _startup_done = True
 
-    global _excel_mtime
-    try:
-        init_excel()
-        smart_sync()
-        _excel_mtime = EXCEL_PATH.stat().st_mtime if EXCEL_PATH.exists() else 0
-    except Exception as _e:
-        print(f"⚠️ Startup sync skipped: {_e}")
+    # global _excel_mtime
+    # try:
+    #     init_excel()
+    #     smart_sync()
+    #     _excel_mtime = EXCEL_PATH.stat().st_mtime if EXCEL_PATH.exists() else 0
+    # except Exception as _e:
+    #     print(f"⚠️ Startup sync skipped: {_e}")
 
 # ─── Security Headers (applied to every response) ─────────────────────────
 @app.after_request
@@ -1068,16 +1068,16 @@ def add_transaction():
         conn.commit()
         conn.close()
 
-        # Sync to Excel
-        add_transaction_to_excel({
-            "date": txn_date,
-            "description": description,
-            "amount": round(amount, 2),
-            "category": category,
-            "card_id": card_id,
-            "txn_type": txn_type,
-            "notes": notes,
-        })
+        # # Sync to Excel
+        # add_transaction_to_excel({
+        #     "date": txn_date,
+        #     "description": description,
+        #     "amount": round(amount, 2),
+        #     "category": category,
+        #     "card_id": card_id,
+        #     "txn_type": txn_type,
+        #     "notes": notes,
+        # })
 
         flash(f"✅ Transaction added: ₹{amount:,.2f} — {description}", "success")
         return redirect(url_for("index"))
@@ -1258,12 +1258,15 @@ def delete_transaction(txn_id):
     conn.commit()
     conn.close()
 
-    # Sync to Excel
-    sc = db_sync_to_excel()
-    if sc == 0:
-        flash("⚠️ Transaction deleted in website, but Excel could not be updated. Close Excel and Sync.", "warning")
-    else:
-        flash("🗑️ Transaction deleted", "info")
+    # # Sync to Excel (disabled)
+    # sc = db_sync_to_excel()
+    # if sc == 0:
+    #     flash("⚠️ Transaction deleted in website, but Excel could not be updated. Close Excel and Sync.", "warning")
+    # else:
+    #     flash("🗑️ Transaction deleted", "info")
+    # return redirect(request.referrer or url_for("index"))
+
+    flash("🗑️ Transaction deleted", "info")
     return redirect(request.referrer or url_for("index"))
 
 
@@ -1312,12 +1315,12 @@ def edit_transaction(txn_id):
         conn.commit()
         conn.close()
 
-        # Sync to Excel
-        sync_count = db_sync_to_excel()
-        if sync_count == 0:
-            flash(f"⚠️ Transaction updated in website, but could not update Excel (file may be open). Close Excel and click Sync.", "warning")
-        else:
-            flash(f"✅ Transaction updated: ₹{amount:,.2f} — {description}", "success")
+        # # Sync to Excel (disabled)
+        # sync_count = db_sync_to_excel()
+        # if sync_count == 0:
+        #     flash(f"⚠️ Transaction updated in website, but could not update Excel (file may be open). Close Excel and click Sync.", "warning")
+        # else:
+        flash(f"✅ Transaction updated: ₹{amount:,.2f} — {description}", "success")
         return redirect(url_for("index"))
 
     # GET — show edit form
@@ -1644,23 +1647,23 @@ def cashback_page():
     )
 
 
-@app.route("/open-excel")
-@login_required
-def open_excel():
-    """Download the Excel file (instead of opening on server)."""
-    if session.get("username") != "pratik":
-        flash("⛔ Excel download is only available for the primary user.", "danger")
-        return redirect(request.referrer or url_for("index"))
-    try:
-        return send_file(
-            EXCEL_PATH,
-            as_attachment=True,
-            download_name="expense_tracker.xlsx",
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    except Exception as e:
-        flash(f"❌ Could not serve Excel file: {e}", "danger")
-        return redirect(request.referrer or url_for("index"))
+# @app.route("/open-excel")
+# @login_required
+# def open_excel():
+#     """Download the Excel file (instead of opening on server)."""
+#     if session.get("username") != "pratik":
+#         flash("⛔ Excel download is only available for the primary user.", "danger")
+#         return redirect(request.referrer or url_for("index"))
+#     try:
+#         return send_file(
+#             EXCEL_PATH,
+#             as_attachment=True,
+#             download_name="expense_tracker.xlsx",
+#             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+#         )
+#     except Exception as e:
+#         flash(f"❌ Could not serve Excel file: {e}", "danger")
+#         return redirect(request.referrer or url_for("index"))
 
 
 @app.route("/backup-download")
