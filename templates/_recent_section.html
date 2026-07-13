@@ -18,7 +18,7 @@
                     <th>Amount</th>
                     <th class="d-none d-sm-table-cell">Bank / Card</th>
                     <th class="d-none d-sm-table-cell text-end">CB</th>
-                    <th style="width:35px"></th>
+                    <th style="width:30px"></th>
                 </tr>
             </thead>
             <tbody>
@@ -43,7 +43,19 @@
                         {% endif %}
                     </td>
                     <td>
-                        <a href="/edit/{{ txn.id }}" class="btn btn-sm btn-outline-warning border-0 px-1"><i class="bi bi-pencil"></i></a>
+                        <div class="dropdown">
+                            <button class="btn btn-sm text-secondary border-0 p-0 px-1" data-bs-toggle="dropdown" style="line-height:1;font-size:1rem">⋮</button>
+                            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark" style="min-width:100px;font-size:0.75rem">
+                                <li><a class="dropdown-item" href="/edit/{{ txn.id }}"><i class="bi bi-pencil me-1"></i>Edit</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="/delete/{{ txn.id }}" style="display:inline" onsubmit="return confirm('Delete this transaction?')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button class="dropdown-item text-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
