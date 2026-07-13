@@ -161,15 +161,20 @@
 
         /* ─── Kill Bootstrap green-border on password fields ─────────────── */
         #password:valid, #confirmPassword:valid,
-        #password.is-valid, #confirmPassword.is-valid {
+        #password.is-valid, #confirmPassword.is-valid,
+        #password:focus:valid, #confirmPassword:focus:valid,
+        #password.is-valid:focus, #confirmPassword.is-valid:focus {
             border-color: var(--border-card) !important;
             background-image: none !important;
             padding-right: 0.75rem !important;
+            box-shadow: none !important;
         }
-        #confirmPassword.is-invalid {
+        #confirmPassword.is-invalid,
+        #confirmPassword.is-invalid:focus {
             border-color: var(--danger) !important;
             background-image: none !important;
             padding-right: 0.75rem !important;
+            box-shadow: 0 0 0 3px rgba(255, 82, 82, 0.15) !important;
         }
 
         /* ─── Buttons ──────────────────────────────────────────────────── */
@@ -382,7 +387,6 @@
                             name="confirm"
                             class="form-control"
                             placeholder="Repeat password"
-                            required
                             autocomplete="new-password">
                         <div class="invalid-feedback small mt-1">
                             Please confirm your password
