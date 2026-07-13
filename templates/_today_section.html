@@ -64,13 +64,13 @@
         <small class="text-secondary-custom">Page {{ page_today }} of {{ today_pages }}</small>
         <div class="btn-group btn-group-sm">
             {% if page_today > 1 %}
-            <a href="/?page_today={{ page_today - 1 }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn btn-outline-light">&laquo;</a>
+            <a href="/?page_today={{ page_today - 1 }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn btn-outline-light"><i class="bi bi-chevron-left"></i></a>
             {% endif %}
             {% for p in range(1, today_pages + 1) %}
             <a href="/?page_today={{ p }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn {% if p == page_today %}btn-light{% else %}btn-outline-light{% endif %}">{{ p }}</a>
             {% endfor %}
             {% if page_today < today_pages %}
-            <a href="/?page_today={{ page_today + 1 }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn btn-outline-light">&raquo;</a>
+            <a href="/?page_today={{ page_today + 1 }}&sort_today={{ sort_today }}&sort={{ sort_by }}&page_recent={{ page_recent }}" class="btn btn-outline-light"><i class="bi bi-chevron-right"></i></a>
             {% endif %}
         </div>
         {% endif %}

@@ -5,7 +5,7 @@
         <ul class="pagination pagination-sm mb-0">
             {% if page > 1 %}
             <li class="page-item">
-                <a class="page-link" href="/transactions?page={{ page - 1 }}&sort={{ sort_by }}&dir={{ sort_dir }}&category={{ filter_cat }}&card_id={{ filter_card }}&txn_type={{ filter_type }}&q={{ filter_search }}&from={{ filter_from }}&to={{ filter_to }}">&laquo;</a>
+                <a class="page-link" href="/transactions?page={{ page - 1 }}&sort={{ sort_by }}&dir={{ sort_dir }}&category={{ filter_cat }}&card_id={{ filter_card }}&txn_type={{ filter_type }}&q={{ filter_search }}&from={{ filter_from }}&to={{ filter_to }}"><i class="bi bi-chevron-left"></i></a>
             </li>
             {% endif %}
             {% for p in range(1, pages + 1) %}
@@ -21,7 +21,7 @@
             {% endfor %}
             {% if page < pages %}
             <li class="page-item">
-                <a class="page-link" href="/transactions?page={{ page + 1 }}&sort={{ sort_by }}&dir={{ sort_dir }}&category={{ filter_cat }}&card_id={{ filter_card }}&txn_type={{ filter_type }}&q={{ filter_search }}&from={{ filter_from }}&to={{ filter_to }}">&raquo;</a>
+                <a class="page-link" href="/transactions?page={{ page + 1 }}&sort={{ sort_by }}&dir={{ sort_dir }}&category={{ filter_cat }}&card_id={{ filter_card }}&txn_type={{ filter_type }}&q={{ filter_search }}&from={{ filter_from }}&to={{ filter_to }}"><i class="bi bi-chevron-right"></i></a>
             </li>
             {% endif %}
         </ul>
