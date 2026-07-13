@@ -38,10 +38,6 @@
     </div>
 </div>
 
-<form method="POST" action="/clear-person" class="mb-3" onsubmit="return confirm('Clear your name from all transactions?')">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-person-x me-1"></i>Clear my name from transactions</button>
-</form>
 
 <!-- ===================== DAILY REPORT ===================== -->
 <div class="card mb-4">
@@ -154,7 +150,7 @@
                                                         <td style="width:100px" class="text-end fw-semibold text-{% if txn.txn_type=='debit' %}danger{% else %}success{% endif %}">₹{{ "%.0f"|format(txn.amount) }}</td>
                                                         <td style="width:30px">
                                                             <div class="dropdown">
-                                                                <button class="btn btn-sm text-secondary border-0 p-0 px-1" data-bs-toggle="dropdown" style="line-height:1;font-size:1rem">⋮</button>
+                                                                <button class="btn btn-sm text-secondary border-0 p-0 px-1" data-bs-toggle="dropdown" style="line-height:1;font-size:1rem"><i class="bi bi-three-dots-vertical"></i></button>
                                                                 <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark" style="min-width:100px;font-size:0.75rem">
                                                                     <li><a class="dropdown-item" href="/edit/{{ txn.id }}"><i class="bi bi-pencil me-1"></i>Edit</a></li>
                                                                     <li><hr class="dropdown-divider"></li>
@@ -243,7 +239,7 @@
                                                 <td style="width:100px" class="text-end fw-semibold text-{% if txn.txn_type=='debit' %}danger{% else %}success{% endif %}">₹{{ "%.0f"|format(txn.amount) }}</td>
                                                 <td style="width:30px">
                                                     <div class="dropdown">
-                                                        <button class="btn btn-sm text-secondary border-0 p-0 px-1" data-bs-toggle="dropdown" style="line-height:1;font-size:1rem">⋮</button>
+                                                        <button class="btn btn-sm text-secondary border-0 p-0 px-1" data-bs-toggle="dropdown" style="line-height:1;font-size:1rem"><i class="bi bi-three-dots-vertical"></i></button>
                                                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark" style="min-width:100px;font-size:0.75rem">
                                                             <li><a class="dropdown-item" href="/edit/{{ txn.id }}"><i class="bi bi-pencil me-1"></i>Edit</a></li>
                                                             <li><hr class="dropdown-divider"></li>

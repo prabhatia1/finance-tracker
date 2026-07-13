@@ -1268,28 +1268,7 @@ def delete_transaction(txn_id):
     return redirect(request.referrer or url_for("index"))
 
 
-@app.route("/clear-person", methods=["POST"])
-@login_required
-def clear_person():
-    """Remove the logged-in user's name from all transactions where person matches display_name."""
-    user_id = session["user_id"]
-    display_name = session.get("display_name", "").strip()
-    if not display_name:
-        flash("No display name set to clear.", "warning")
-        return redirect(request.referrer or url_for("index"))
-    conn = get_db()
-    count = conn.execute(
-        "UPDATE transactions SET person = '' WHERE user_id = ? AND person = ?",
-        (user_id, display_name)
-    ).rowcount
-    conn.commit()
-    conn.close()
-    flash(f"✅ Cleared '{display_name}' from {count} transaction(s).", "success")
-    return redirect(request.referrer or url_for("index"))
-
-
 @app.route("/edit/<int:txn_id>", methods=["GET", "POST"])
-
 @login_required
 def edit_transaction(txn_id):
     """Edit a transaction."""
