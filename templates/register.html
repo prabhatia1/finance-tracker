@@ -159,6 +159,19 @@
         .match-status.error   { background-color: rgba(255, 82, 82, 0.1); color: var(--danger); border: 1px solid rgba(255, 82, 82, 0.3); }
         .match-status.success { background-color: rgba(0, 230, 118, 0.1); color: var(--success); border: 1px solid rgba(0, 230, 118, 0.3); }
 
+        /* ─── Kill Bootstrap green-border on password fields ─────────────── */
+        #password:valid, #confirmPassword:valid,
+        #password.is-valid, #confirmPassword.is-valid {
+            border-color: var(--border-card) !important;
+            background-image: none !important;
+            padding-right: 0.75rem !important;
+        }
+        #confirmPassword.is-invalid {
+            border-color: var(--danger) !important;
+            background-image: none !important;
+            padding-right: 0.75rem !important;
+        }
+
         /* ─── Buttons ──────────────────────────────────────────────────── */
         .btn-primary {
             background: var(--accent-primary);
@@ -440,6 +453,13 @@
             matchStatus.innerHTML = match
                 ? '<i class="bi bi-check-circle"></i> Passwords match'
                 : '<i class="bi bi-x-circle"></i> Passwords don\'t match';
+            // Toggle border: red when mismatched, neutral when empty/matched
+            if (confirmInput.value.length > 0 && !match) {
+                confirmInput.classList.add('is-invalid');
+                confirmInput.classList.remove('is-valid');
+            } else {
+                confirmInput.classList.remove('is-invalid');
+            }
         }
 
         pwInput.addEventListener('input', checkPasswordStrength);
