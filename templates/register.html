@@ -33,6 +33,9 @@
             margin: 0;
             padding: 20px 0;
         }
+        .form-label, .form-text, .text-muted, h4, h4 small, p, a, .small, strong.small {
+            color: var(--text-primary) !important;
+        }
 
         .auth-card {
             max-width: 480px;
@@ -116,8 +119,8 @@
         .password-strength {
             margin-top: 1rem;
             padding: 1rem;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-card);
+            background: rgba(108, 92, 231, 0.06);
+            border: 1px solid var(--accent-primary);
             border-radius: 8px;
             display: none;
         }
@@ -146,7 +149,7 @@
             color: white;
         }
 
-        .strength-badge.unchecked { background-color: var(--border-card); color: var(--text-secondary); }
+        .strength-badge.unchecked { background-color: #3a2a5e; color: var(--text-primary); }
         .strength-badge.checked   { background-color: var(--success); color: #000; }
 
         /* ─── Match Indicator ────────────────────────────────────────────── */
@@ -267,7 +270,7 @@
                         <div class="form-text small">
                             <i class="bi bi-info-circle"></i> 3-20 characters, letters/numbers/underscore only
                         </div>
-                        <div class="invalid-feedback d-block small">
+                        <div class="invalid-feedback small">
                             Please enter a valid username
                         </div>
                     </div>
@@ -288,7 +291,7 @@
                         <div class="form-text small">
                             <i class="bi bi-info-circle"></i> This will be used as your name on transactions
                         </div>
-                        <div class="invalid-feedback d-block small">
+                        <div class="invalid-feedback small">
                             Please enter your display name
                         </div>
                     </div>
@@ -309,7 +312,7 @@
                         <div class="form-text small">
                             <i class="bi bi-shield-check"></i> Used to verify your identity for password recovery
                         </div>
-                        <div class="invalid-feedback d-block small">
+                        <div class="invalid-feedback small">
                             Please enter a security word
                         </div>
                     </div>
@@ -328,7 +331,7 @@
                             required
                             minlength="6"
                             autocomplete="new-password">
-                        <div class="invalid-feedback d-block small mt-1">
+                        <div class="invalid-feedback small mt-1">
                             Please enter a password
                         </div>
 
@@ -367,7 +370,7 @@
                             placeholder="Repeat password"
                             required
                             autocomplete="new-password">
-                        <div class="invalid-feedback d-block small mt-1">
+                        <div class="invalid-feedback small mt-1">
                             Please confirm your password
                         </div>
 

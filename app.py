@@ -464,7 +464,7 @@ def server_error(e):
 from werkzeug.security import generate_password_hash, check_password_hash
 
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("15 per minute")
 def login():
     if request.method == "POST":
         username = sanitize(request.form.get("username", "")).lower()
@@ -1544,8 +1544,9 @@ def change_password():
         flash("New passwords don't match.", "danger")
         return redirect(url_for("settings"))
 
-    if len(new_pw) < 4:
-        flash("Password must be at least 4 characters.", "danger")
+    valid_pw, msg = PasswordValidator.validate(new_pw)
+    if not valid_pw:
+        flash(f"Password too weak: {msg}", "danger")
         return redirect(url_for("settings"))
 
     conn = get_db()

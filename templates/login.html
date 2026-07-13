@@ -29,6 +29,9 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
         }
+        .form-label, .form-text, .text-muted, h4, h4 small, p, a, .small {
+            color: var(--text-primary) !important;
+        }
 
         .auth-card {
             max-width: 420px;
@@ -252,7 +255,7 @@
                             title="Username: 3-20 chars, letters/numbers/underscore only"
                             autocomplete="username"
                             autofocus>
-                        <div class="invalid-feedback d-block small mt-1">
+                        <div class="invalid-feedback small mt-1">
                             Please enter a valid username (3-20 chars, letters/numbers/underscore only)
                         </div>
                     </div>
@@ -273,7 +276,7 @@
                             placeholder="Enter password"
                             required
                             autocomplete="current-password">
-                        <div class="invalid-feedback d-block small mt-1">
+                        <div class="invalid-feedback small mt-1">
                             Please enter your password
                         </div>
                     </div>
