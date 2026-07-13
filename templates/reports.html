@@ -4,15 +4,12 @@
 <!-- Report Navigation -->
 <div class="card mb-4">
     <div class="card-body d-flex flex-wrap gap-3 align-items-center">
-        <!-- Date picker for daily -->
         <div class="d-flex align-items-center gap-2">
             <label class="form-label mb-0 text-nowrap">Daily:</label>
             <input type="date" class="form-control form-control-sm" id="dayPicker" value="{{ selected_day }}"
                    style="width:160px"
                    onchange="window.location.href='?day='+this.value+'&year={{ selected_year }}&month={{ selected_month }}'">
         </div>
-
-        <!-- Month picker for monthly -->
         <div class="d-flex align-items-center gap-2">
             <label class="form-label mb-0 text-nowrap">Month:</label>
             <select class="form-select form-select-sm" style="width:auto" id="monthPicker"
@@ -28,8 +25,6 @@
                 {% endfor %}
             </select>
         </div>
-
-        <!-- Card filter -->
         <div class="d-flex align-items-center gap-2">
             <label class="form-label mb-0 text-nowrap">Bank / Card:</label>
             <select class="form-select form-select-sm" style="width:auto" id="cardPicker"
@@ -40,10 +35,13 @@
                 {% endfor %}
             </select>
         </div>
-
-        </div>
     </div>
 </div>
+
+<form method="POST" action="/clear-person" class="mb-3" onsubmit="return confirm('Clear your name from all transactions?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-person-x me-1"></i>Clear my name from transactions</button>
+</form>
 
 <!-- ===================== DAILY REPORT ===================== -->
 <div class="card mb-4">
@@ -101,7 +99,7 @@
 </div>
 
 <div class="row g-3">
-    <!-- ===================== MONTHLY REPORT (Category) ===================== -->
+    <!-- ===================== CATEGORY BREAKDOWN ===================== -->
     <div class="col-lg-7">
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between">
@@ -111,38 +109,73 @@
             <div class="card-body p-0">
                 {% if monthly.cat_totals %}
                 <div class="table-responsive">
+                    <canvas id="catPieChart" class="p-3" style="max-height:260px;width:100%"></canvas>
                     <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Category</th>
-                                <th>Amount</th>
-                                <th>%</th>
-                                <th>Progress</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% set max_cat_amount = monthly.cat_totals.values()|first if monthly.cat_totals else 1 %}
-                            {% for cat_name, cat_total in monthly.cat_totals.items() %}
-                            {% set pct = (cat_total / monthly.total_spend * 100) if monthly.total_spend > 0 else 0 %}
-                            {% set bar_pct = (cat_total / max_cat_amount * 100) if max_cat_amount > 0 else 0 %}
-                            {% set colors = ['#448aff', '#00c853', '#ff9100', '#ff5252', '#aa00ff', '#00bcd4', '#ff4081', '#76ff03'] %}
-                            {% set color = colors[loop.index0 % colors|length] %}
-                            <tr>
-                                <td>
-                                    <span class="category-dot" style="background:{{ color }}"></span>
-                                    {{ cat_name }}
-                                </td>
-                                <td class="fw-semibold">₹{{ "%.2f"|format(cat_total) }}</td>
-                                <td><small class="text-muted">{{ "%.1f"|format(pct) }}%</small></td>
-                                <td style="width:30%">
-                                    <div class="progress-bar-container">
-                                        <div class="progress-fill" style="width:{{ bar_pct }}%; background:{{ color }}"></div>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                                <thead>
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Amount</th>
+                                        <th>%</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set colors = ['#448aff', '#00c853', '#ff9100', '#ff5252', '#aa00ff', '#00bcd4', '#ff4081', '#76ff03'] %}
+                                    {% for cat_name, cat_total in monthly.cat_totals.items() %}
+                                    {% set pct = (cat_total / monthly.total_spend * 100) if monthly.total_spend > 0 else 0 %}
+                                    {% set color = colors[loop.index0 % colors|length] %}
+                                    {% set cat_txns = monthly.cat_txns.get(cat_name, []) %}
+                                    <tr onclick="toggleDetail('cat-{{ loop.index }}')" class="clickable-row" style="cursor:pointer">
+                                        <td>
+                                            <span class="category-dot" style="background:{{ color }}"></span>
+                                            {{ cat_name }}
+                                            <small class="text-muted ms-1">({{ cat_txns|length }})</small>
+                                        </td>
+                                        <td class="fw-semibold">₹{{ "%.2f"|format(cat_total) }}</td>
+                                        <td><small class="text-muted">{{ "%.1f"|format(pct) }}%</small></td>
+                                    </tr>
+                                    <tr id="detail-cat-{{ loop.index }}" class="detail-row" style="display:none">
+                                        <td colspan="3" class="p-0" style="border-top:none">
+                                            <div class="detail-scroll" style="max-height:280px;overflow-y:auto;background:#1a1d23">
+                                                <table class="table table-sm table-borderless mb-0" style="font-size:0.8rem">
+                                                    <thead>
+                                                        <tr style="border-bottom:1px solid #333;color:#888;font-size:0.7rem">
+                                                            <th style="width:55px;padding-left:1.5rem">Date</th>
+                                                            <th>Description</th>
+                                                            <th>Card</th>
+                                                            <th style="width:100px" class="text-end">Amount</th>
+                                                            <th style="width:30px"></th>
+                                                        </tr>
+                                                    </thead>
+                                                    {% for txn in cat_txns %}
+                                                    <tr>
+                                                        <td style="width:55px;padding-left:1.5rem"><small class="text-muted">{{ txn.date[-5:] }}</small></td>
+                                                        <td>{{ txn.description[:30] }}{% if txn.description|length>30 %}…{% endif %}</td>
+                                                        <td><small class="text-muted">{{ txn.card_id }}</small></td>
+                                                        <td style="width:100px" class="text-end fw-semibold text-{% if txn.txn_type=='debit' %}danger{% else %}success{% endif %}">₹{{ "%.0f"|format(txn.amount) }}</td>
+                                                        <td style="width:30px">
+                                                            <div class="dropdown">
+                                                                <button class="btn btn-sm text-secondary border-0 p-0 px-1" data-bs-toggle="dropdown" style="line-height:1;font-size:1rem">⋮</button>
+                                                                <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark" style="min-width:100px;font-size:0.75rem">
+                                                                    <li><a class="dropdown-item" href="/edit/{{ txn.id }}"><i class="bi bi-pencil me-1"></i>Edit</a></li>
+                                                                    <li><hr class="dropdown-divider"></li>
+                                                                    <li>
+                                                                        <form method="POST" action="/delete/{{ txn.id }}" style="display:inline" onsubmit="return confirm('Delete this transaction?')">
+                                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                                            <button class="dropdown-item text-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+                                                                        </form>
+                                                                    </li>
+                                                                </ul>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </table>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                 </div>
                 {% else %}
                 <div class="text-center py-4 text-muted">
@@ -154,7 +187,7 @@
         </div>
     </div>
 
-    <!-- ===================== CARD-WISE REPORT ===================== -->
+    <!-- ===================== CARD-WISE SPENDING ===================== -->
     <div class="col-lg-5">
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between">
@@ -163,6 +196,9 @@
             </div>
             <div class="card-body p-0">
                 {% if monthly.card_totals %}
+                <div class="p-3 pb-0" style="min-height:200px">
+                    <canvas id="cardBarChart"></canvas>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead>
@@ -173,24 +209,56 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% set max_card_amount = monthly.card_totals.values()|first if monthly.card_totals else 1 %}
+                            {% set card_colors = {'sbi_cb': '#448aff', 'sbi_pp': '#00bcd4', 'hdfc_mil': '#ff9100', 'hdfc_swig': '#ff5252', 'bob_eterna': '#aa00ff'} %}
                             {% for cid, ctotal in monthly.card_totals.items() %}
                             {% set display_name = card_map.get(cid, cid) %}
-                            {% set bar_pct = (ctotal / max_card_amount * 100) if max_card_amount > 0 else 0 %}
-                            {% set card_colors = {'sbi_cb': '#448aff', 'sbi_pp': '#00bcd4', 'hdfc_mil': '#ff9100', 'hdfc_swig': '#ff5252', 'bob_eterna': '#aa00ff'} %}
                             {% set ccolor = card_colors.get(cid, '#76ff03') %}
-                            <tr>
+                            {% set card_txns = monthly.card_txns.get(cid, []) %}
+                            <tr onclick="toggleDetail('card-{{ loop.index }}')" class="clickable-row" style="cursor:pointer">
                                 <td>
                                     <span class="category-dot" style="background:{{ ccolor }}"></span>
                                     {{ display_name }}
                                 </td>
-                                <td><small class="text-muted">{{ monthly.card_txns[cid]|length }}</small></td>
+                                <td><small class="text-muted">{{ card_txns|length }}</small></td>
                                 <td class="fw-semibold">₹{{ "%.2f"|format(ctotal) }}</td>
                             </tr>
-                            <tr class="no-hover">
-                                <td colspan="3" class="p-0 px-3 pb-2" style="border:none">
-                                    <div class="progress-bar-container">
-                                        <div class="progress-fill" style="width:{{ bar_pct }}%; background:{{ ccolor }}"></div>
+                            <tr id="detail-card-{{ loop.index }}" class="detail-row" style="display:none">
+                                <td colspan="3" class="p-0" style="border-top:none">
+                                    <div class="detail-scroll" style="max-height:280px;overflow-y:auto;background:#1a1d23">
+                                        <table class="table table-sm table-borderless mb-0" style="font-size:0.8rem">
+                                            <thead>
+                                                <tr style="border-bottom:1px solid #333;color:#888;font-size:0.7rem">
+                                                    <th style="width:55px;padding-left:1.5rem">Date</th>
+                                                    <th>Description</th>
+                                                    <th>Category</th>
+                                                    <th style="width:100px" class="text-end">Amount</th>
+                                                    <th style="width:30px"></th>
+                                                </tr>
+                                            </thead>
+                                            {% for txn in card_txns %}
+                                            <tr>
+                                                <td style="width:55px;padding-left:1.5rem"><small class="text-muted">{{ txn.date[-5:] }}</small></td>
+                                                <td>{{ txn.description[:30] }}{% if txn.description|length>30 %}…{% endif %}</td>
+                                                <td><span class="badge badge-category bg-blue" style="font-size:0.6rem">{{ txn.category }}</span></td>
+                                                <td style="width:100px" class="text-end fw-semibold text-{% if txn.txn_type=='debit' %}danger{% else %}success{% endif %}">₹{{ "%.0f"|format(txn.amount) }}</td>
+                                                <td style="width:30px">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm text-secondary border-0 p-0 px-1" data-bs-toggle="dropdown" style="line-height:1;font-size:1rem">⋮</button>
+                                                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark" style="min-width:100px;font-size:0.75rem">
+                                                            <li><a class="dropdown-item" href="/edit/{{ txn.id }}"><i class="bi bi-pencil me-1"></i>Edit</a></li>
+                                                            <li><hr class="dropdown-divider"></li>
+                                                            <li>
+                                                                <form method="POST" action="/delete/{{ txn.id }}" style="display:inline" onsubmit="return confirm('Delete this transaction?')">
+                                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                                    <button class="dropdown-item text-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+                                                                </form>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </table>
                                     </div>
                                 </td>
                             </tr>
@@ -207,7 +275,6 @@
             </div>
         </div>
 
-        <!-- Recent transactions for selected card -->
         {% if selected_card and card_rpt.transactions %}
         <div class="card">
             <div class="card-header">
@@ -243,6 +310,13 @@
     </div>
 </div>
 
+<style>
+.clickable-row:hover { background:rgba(255,255,255,0.04); }
+.detail-scroll::-webkit-scrollbar { width:6px; }
+.detail-scroll::-webkit-scrollbar-track { background:transparent; }
+.detail-scroll::-webkit-scrollbar-thumb { background:#444; border-radius:3px; }
+</style>
+
 <script>
 function updateUrl() {
     const month = document.getElementById('monthPicker').value;
@@ -253,6 +327,124 @@ function updateUrl() {
     if (card) url += `&card_id=${card}`;
     window.location.href = url;
 }
+
+function toggleDetail(id) {
+    const row = document.getElementById('detail-' + id);
+    if (!row) return;
+    const isHidden = row.style.display === 'none' || row.style.display === '';
+    row.style.display = isHidden ? 'table-row' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    const textColor = isDark ? '#eef2f8' : '#1a1a2e';
+    const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+    const tooltipBg = isDark ? '#1e2538' : '#fff';
+    const tooltipBorder = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+
+    Chart.defaults.color = textColor;
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+    {% if monthly.cat_totals %}
+    // ─── Doughnut Chart (Category) ──────────────────────────────
+    const catLabels = [{% for cat_name in monthly.cat_totals.keys() %}'{{ cat_name|e }}',{% endfor %}];
+    const catData   = [{% for cat_total in monthly.cat_totals.values() %}{{ cat_total }},{% endfor %}];
+    const catColors = ['#448aff','#00c853','#ff9100','#ff5252','#aa00ff','#00bcd4','#ff4081','#76ff03','#ffd740','#69f0ae','#b388ff','#40c4ff'];
+    const total     = catData.reduce((a,b)=>a+b, 0);
+
+    new Chart(document.getElementById('catPieChart'), {
+        type: 'doughnut',
+        data: {
+            labels: catLabels,
+            datasets: [{
+                data: catData,
+                backgroundColor: catColors.slice(0, catLabels.length),
+                borderColor: isDark ? '#0d1630' : '#fff',
+                borderWidth: 2,
+                hoverOffset: 12
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: tooltipBg,
+                    titleColor: textColor,
+                    bodyColor: textColor,
+                    borderColor: tooltipBorder,
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    padding: 10,
+                    callbacks: {
+                        label: function(ctx) {
+                            const val = ctx.parsed;
+                            const pct = total > 0 ? (val / total * 100).toFixed(1) : 0;
+                            return ` ₹${val.toLocaleString('en-IN')}  (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+
+    {% if monthly.card_totals %}
+    // ─── Horizontal Bar Chart (Card-wise) ───────────────────────
+    const cardLabels = [{% for cid, ctotal in monthly.card_totals.items() %}'{{ card_map.get(cid, cid)|e }}',{% endfor %}];
+    const cardData   = [{% for cid, ctotal in monthly.card_totals.items() %}{{ ctotal }},{% endfor %}];
+    const cardColors = [{% for cid, ctotal in monthly.card_totals.items() %}'{{ {'sbi_cb':'#448aff','sbi_pp':'#00bcd4','hdfc_mil':'#ff9100','hdfc_swig':'#ff5252','bob_eterna':'#aa00ff'}.get(cid, '#76ff03') }}',{% endfor %}];
+
+    new Chart(document.getElementById('cardBarChart'), {
+        type: 'bar',
+        data: {
+            labels: cardLabels,
+            datasets: [{
+                data: cardData,
+                backgroundColor: cardColors,
+                borderRadius: 6,
+                borderSkipped: false,
+                hoverBackgroundColor: cardColors.map(c => c + 'cc')
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: tooltipBg,
+                    titleColor: textColor,
+                    bodyColor: textColor,
+                    borderColor: tooltipBorder,
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    padding: 10,
+                    callbacks: {
+                        label: function(ctx) {
+                            return ` ₹${ctx.parsed.x.toLocaleString('en-IN')}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: gridColor },
+                    ticks: {
+                        callback: function(v) { return '₹' + v.toLocaleString('en-IN'); }
+                    }
+                },
+                y: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+    {% endif %}
+});
 </script>
 
 {% endblock %}
