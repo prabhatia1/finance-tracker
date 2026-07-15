@@ -1070,7 +1070,7 @@ def add_transaction():
         conn.execute(
             "INSERT INTO transactions (date, description, amount, category, card_id, txn_type, notes, source, person, cashback, user_id) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?)",
-            (txn_date, amount, category, card_id, txn_type, notes, person, cashback, user_id)
+            (txn_date, description, amount, category, card_id, txn_type, notes, person, cashback, user_id)
         )
         conn.commit()
         conn.close()
