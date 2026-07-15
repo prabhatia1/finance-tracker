@@ -334,28 +334,9 @@
                 event.getModifierState('CapsLock') ? 'block' : 'none';
         });
 
-        // ─── Form Validation ────────────────────────────────────────────
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            if (!this.checkValidity()) {
-                e.preventDefault();
-                e.stopPropagation();
-            } else {
-                const btn = document.getElementById('submitBtn');
-                const spinner = document.getElementById('spinner');
-                const text = document.getElementById('btnText');
-                btn.disabled = true;
-                spinner.style.display = 'inline-block';
-                text.textContent = 'Signing in...';
-            }
-            this.classList.add('was-validated');
-        });
-
-        // ─── Prevent Double Submit ──────────────────────────────────────
+        // ─── Form Submission ─────────────────────────────────────────────
         let formSubmitted = false;
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            if (formSubmitted) { e.preventDefault(); return false; }
-            formSubmitted = true;
-        });
+        document.getElem...[truncated]
     </script>
 </body>
 </html>
