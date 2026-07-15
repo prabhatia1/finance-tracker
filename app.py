@@ -212,10 +212,68 @@ def login_required(f):
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
+SCHEMA_SQL = """CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    description TEXT NOT NULL,
+    amount REAL NOT NULL,
+    category TEXT DEFAULT 'Other',
+    card_id TEXT DEFAULT 'other',
+    txn_type TEXT DEFAULT 'debit',
+    notes TEXT DEFAULT '',
+    source TEXT DEFAULT 'manual',
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    person TEXT DEFAULT "",
+    cashback REAL DEFAULT 0,
+    user_id INTEGER REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_txn_date ON transactions(date);
+CREATE INDEX IF NOT EXISTS idx_txn_category ON transactions(category);
+CREATE INDEX IF NOT EXISTS idx_txn_card ON transactions(card_id);
+
+CREATE TABLE IF NOT EXISTS monthly_balances (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    month TEXT NOT NULL UNIQUE,
+    start_balance REAL DEFAULT 0,
+    end_balance REAL DEFAULT 0,
+    updated_at TEXT DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    security_word TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS user_cards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    card_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    type TEXT DEFAULT 'Other',
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id, card_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_people (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id, name)
+);
+"""
+
+
 def get_db():
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.executescript(SCHEMA_SQL)
     return conn
 
 
@@ -280,64 +338,6 @@ def save_categories(categories):
 
 def init_db():
     conn = get_db()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            description TEXT NOT NULL,
-            amount REAL NOT NULL,
-            category TEXT DEFAULT 'Other',
-            card_id TEXT DEFAULT 'other',
-            txn_type TEXT DEFAULT 'debit',
-            notes TEXT DEFAULT '',
-            source TEXT DEFAULT 'manual',
-            created_at TEXT DEFAULT (datetime('now','localtime')),
-            person TEXT DEFAULT "",
-            cashback REAL DEFAULT 0,
-            user_id INTEGER REFERENCES users(id)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_txn_date ON transactions(date);
-        CREATE INDEX IF NOT EXISTS idx_txn_category ON transactions(category);
-        CREATE INDEX IF NOT EXISTS idx_txn_card ON transactions(card_id);
-
-        CREATE TABLE IF NOT EXISTS monthly_balances (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            month TEXT NOT NULL UNIQUE,
-            start_balance REAL DEFAULT 0,
-            end_balance REAL DEFAULT 0,
-            updated_at TEXT DEFAULT (datetime('now','localtime'))
-        );
-
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            display_name TEXT NOT NULL,
-            security_word TEXT DEFAULT '',
-            created_at TEXT DEFAULT (datetime('now'))
-        );
-
-        CREATE TABLE IF NOT EXISTS user_cards (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            card_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            type TEXT DEFAULT 'Other',
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            UNIQUE(user_id, card_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS user_people (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            UNIQUE(user_id, name)
-        );
-    """)
-    conn.commit()
-
     # Migration: drop bank column from user_cards
     try:
         conn.execute("ALTER TABLE user_cards DROP COLUMN bank")
