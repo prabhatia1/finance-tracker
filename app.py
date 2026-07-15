@@ -534,8 +534,13 @@ def register():
             conn2.close()
         except Exception:
             pass
-        flash("Account created! Please log in.", "success")
-        return redirect(url_for("login"))
+        # Auto-login after registration
+        session.clear()
+        session["user_id"] = user_id
+        session["username"] = username
+        session["display_name"] = display_name
+        flash(f"Welcome, {display_name}!", "success")
+        return redirect(url_for("index"))
     return render_template("register.html")
 
 
