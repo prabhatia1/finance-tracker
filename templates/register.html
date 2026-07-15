@@ -332,9 +332,8 @@
                             id="password"
                             name="password"
                             class="form-control"
-                            placeholder="Min 6 chars, uppercase, lowercase, number"
+                            placeholder="Enter your password"
                             required
-                            minlength="6"
                             autocomplete="new-password">
                         <div class="invalid-feedback small mt-1">
                             Please enter a password
@@ -405,12 +404,16 @@
 
         pwInput.addEventListener('input', checkPasswordMatch);
 
-        // ─── Form Validation ────────────────────────────────────────────
+        // ─── Form Submission ─────────────────────────────────────────────
+        let formSubmitted = false;
         document.getElementById('registerForm').addEventListener('submit', function(e) {
+            if (formSubmitted) { e.preventDefault(); return false; }
             if (!this.checkValidity()) {
                 e.preventDefault();
                 e.stopPropagation();
+                formSubmitted = false;  // reset so user can retry
             } else {
+                formSubmitted = true;
                 const btn = document.getElementById('submitBtn');
                 const spinner = document.getElementById('spinner');
                 const text = document.getElementById('btnText');
@@ -419,13 +422,6 @@
                 text.textContent = 'Creating account...';
             }
             this.classList.add('was-validated');
-        });
-
-        // ─── Prevent Double Submit ──────────────────────────────────────
-        let formSubmitted = false;
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
-            if (formSubmitted) { e.preventDefault(); return false; }
-            formSubmitted = true;
         });
     </script>
 </body>
