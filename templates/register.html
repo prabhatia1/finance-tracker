@@ -33,8 +33,7 @@
             margin: 0;
             padding: 20px 0;
         }
-        .form-label, .form-text, .text-muted, h4, h4 small, p, a, .small, strong.small,
-        .strength-item span {
+        .form-label, .form-text, .text-muted, h4, h4 small, p, a, .small, strong.small {
             color: var(--text-primary) !important;
         }
 
@@ -116,43 +115,6 @@
         /* ─── Required Indicator ────────────────────────────────────────── */
         .required { color: var(--danger); margin-left: 2px; }
 
-        /* ─── Password Strength Indicator ────────────────────────────────── */
-        .password-strength {
-            margin-top: 1rem;
-            padding: 1rem;
-            background: rgba(108, 92, 231, 0.06);
-            border: 1px solid var(--accent-primary);
-            border-radius: 8px;
-            display: none;
-        }
-
-        .password-strength.active { display: block; }
-
-        .strength-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 0.5rem;
-            font-size: 0.85rem;
-        }
-
-        .strength-item:last-child { margin-bottom: 0; }
-
-        .strength-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 20px; height: 20px;
-            border-radius: 50%;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-right: 0.5rem;
-            flex-shrink: 0;
-            color: white;
-        }
-
-        .strength-badge.unchecked { background-color: #3a2a5e; color: var(--text-primary); }
-        .strength-badge.checked   { background-color: var(--success); color: #000; }
-
         /* ─── Match Indicator ────────────────────────────────────────────── */
         .match-status { display: none; font-size: 0.85rem; margin-top: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 6px; }
         .match-status.active { display: block; }
@@ -161,6 +123,29 @@
 
         /* ─── Kill Bootstrap green-border on password fields ─────────────── */
         #password:valid, #confirmPassword:valid,
+        #password.is-valid, #confirmPassword.is-valid,
+        #password:focus:valid, #confirmPassword:focus:valid,
+        #password.is-valid:focus, #confirmPassword.is-valid:focus {
+            border-color: var(--border-card) !important;
+            background-image: none !important;
+            padding-right: 0.75rem !important;
+            box-shadow: none !important;
+        }
+        #confirmPassword.is-invalid,
+        #confirmPassword.is-invalid:focus {
+            border-color: var(--danger) !important;
+            background-image: none !important;
+            padding-right: 0.75rem !important;
+            box-shadow: 0 0 0 3px rgba(255, 82, 82, 0.15) !important;
+        }
+
+        @media (max-width: 360px) {
+            .auth-card { padding: 5px; }
+            .card-body  { padding: 1rem !important; }
+            .card-header { padding: 1rem !important; }
+            .form-label { font-size: 0.85rem; }
+            button { font-size: 0.95rem; }
+        }
         #password.is-valid, #confirmPassword.is-valid,
         #password:focus:valid, #confirmPassword:focus:valid,
         #password.is-valid:focus, #confirmPassword.is-valid:focus {
@@ -354,27 +339,6 @@
                         <div class="invalid-feedback small mt-1">
                             Please enter a password
                         </div>
-
-                        <!-- Password Strength Indicator -->
-                        <div class="password-strength" id="pwStrength">
-                            <strong class="small d-block mb-2">Password requirements:</strong>
-                            <div class="strength-item">
-                                <span class="strength-badge unchecked" id="len">✗</span>
-                                <span>At least 6 characters</span>
-                            </div>
-                            <div class="strength-item">
-                                <span class="strength-badge unchecked" id="upper">✗</span>
-                                <span>One uppercase letter (A-Z)</span>
-                            </div>
-                            <div class="strength-item">
-                                <span class="strength-badge unchecked" id="lower">✗</span>
-                                <span>One lowercase letter (a-z)</span>
-                            </div>
-                            <div class="strength-item">
-                                <span class="strength-badge unchecked" id="digit">✗</span>
-                                <span>One digit (0-9)</span>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Confirm Password Field -->
@@ -417,38 +381,10 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // ─── Password Strength Checker ──────────────────────────────────
+        // ─── Password Match Checker ──────────────────────────────────────
         const pwInput = document.getElementById('password');
         const confirmInput = document.getElementById('confirmPassword');
-        const pwStrength = document.getElementById('pwStrength');
         const matchStatus = document.getElementById('matchStatus');
-
-        function checkPasswordStrength() {
-            const pw = pwInput.value;
-            pwStrength.classList.toggle('active', pw.length > 0);
-
-            const lenOk = pw.length >= 6;
-            const lenBadge = document.getElementById('len');
-            lenBadge.className = lenOk ? 'strength-badge checked' : 'strength-badge unchecked';
-            lenBadge.textContent = lenOk ? '✓' : '✗';
-
-            const upperOk = /[A-Z]/.test(pw);
-            const upperBadge = document.getElementById('upper');
-            upperBadge.className = upperOk ? 'strength-badge checked' : 'strength-badge unchecked';
-            upperBadge.textContent = upperOk ? '✓' : '✗';
-
-            const lowerOk = /[a-z]/.test(pw);
-            const lowerBadge = document.getElementById('lower');
-            lowerBadge.className = lowerOk ? 'strength-badge checked' : 'strength-badge unchecked';
-            lowerBadge.textContent = lowerOk ? '✓' : '✗';
-
-            const digitOk = /\d/.test(pw);
-            const digitBadge = document.getElementById('digit');
-            digitBadge.className = digitOk ? 'strength-badge checked' : 'strength-badge unchecked';
-            digitBadge.textContent = digitOk ? '✓' : '✗';
-
-            checkPasswordMatch();
-        }
 
         function checkPasswordMatch() {
             const match = pwInput.value.length > 0 && confirmInput.value.length > 0
@@ -467,8 +403,7 @@
             }
         }
 
-        pwInput.addEventListener('input', checkPasswordStrength);
-        confirmInput.addEventListener('input', checkPasswordMatch);
+        pwInput.addEventListener('input', checkPasswordMatch);
 
         // ─── Form Validation ────────────────────────────────────────────
         document.getElementById('registerForm').addEventListener('submit', function(e) {

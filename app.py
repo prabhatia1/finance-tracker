@@ -115,21 +115,10 @@ def sanitize(text):
 # ─── Password & Input Validation ────────────────────────────────────────────
 class PasswordValidator:
     """Validate password strength."""
-    MIN_LENGTH = 6
+    MIN_LENGTH = 0
 
     @staticmethod
     def validate(password):
-        errors = []
-        if len(password) < PasswordValidator.MIN_LENGTH:
-            errors.append(f"At least {PasswordValidator.MIN_LENGTH} characters")
-        if not re.search(r'[A-Z]', password):
-            errors.append("One uppercase letter")
-        if not re.search(r'[a-z]', password):
-            errors.append("One lowercase letter")
-        if not re.search(r'\d', password):
-            errors.append("One digit")
-        if errors:
-            return False, " • ".join(errors)
         return True, ""
 
     @staticmethod
