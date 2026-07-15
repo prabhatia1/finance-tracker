@@ -639,6 +639,24 @@ def guess_card(description):
     return "other"
 
 
+def validate_transaction(description, amount, cashback, txn_type):
+    """Validate transaction fields from backend. Returns (is_valid, errors_dict)."""
+    errors = {}
+    # Description is optional — useful for tagging transactions to a person
+    if amount <= 0:
+        errors["amount"] = "Amount must be greater than zero!"
+    if amount > 50_000_000:
+        errors["amount"] = "Amount cannot exceed ₹5 crore!"
+    if cashback is not None:
+        if cashback < 0:
+            errors["cashback"] = "Cashback cannot be negative!"
+        if amount > 0 and cashback > amount:
+            errors["cashback"] = "Cashback cannot exceed the transaction amount!"
+    if txn_type not in ("debit", "credit"):
+        errors["txn_type"] = "Invalid transaction type!"
+    return len(errors) == 0, errors
+
+
 def parse_amount(val):
     """Parse a currency string like '1,234.56' or '-1,234' or '1.234,56'."""
     if isinstance(val, (int, float)):
@@ -1034,36 +1052,30 @@ def add_transaction():
         notes = sanitize(request.form.get("notes", ""))
         person = sanitize(request.form.get("person", ""))
 
-        if not description:
-            flash("Description is required!", "danger")
-            return render_template("add.html", cards=cards, categories=categories, persons=persons)
+        # Description is optional — useful for tagging transactions to a person
+        amount = round(amount, 2)
+        cashback = round(float(request.form.get("cashback", 0) or 0), 2)
 
-        if amount <= 0:
-            flash("Amount must be greater than zero!", "danger")
-            return render_template("add.html", cards=cards, categories=categories, persons=persons)
-
-        if amount > 50_000_000:
-            flash("Amount cannot exceed ₹5 crore!", "danger")
+        valid, errors = validate_transaction(description, amount, cashback, txn_type)
+        if not valid:
+            for err in errors.values():
+                flash(err, "danger")
             return render_template("add.html", cards=cards, categories=categories, persons=persons)
 
         # Auto-categorize if user chose "Auto"
         if category == "Auto":
             category = auto_categorize(description, amount)
 
-        # Manual cashback from user input (optional)
-        cashback = float(request.form.get("cashback", 0) or 0)
-        cashback = round(cashback, 2)
-
         conn = get_db()
         conn.execute(
             "INSERT INTO transactions (date, description, amount, category, card_id, txn_type, notes, source, person, cashback, user_id) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?)",
-            (txn_date, description, round(amount, 2), category, card_id, txn_type, notes, person, cashback, user_id)
+            (txn_date, amount, category, card_id, txn_type, notes, person, cashback, user_id)
         )
         conn.commit()
         conn.close()
 
-        # # Sync to Excel
+        flash(f"✅ Transaction added: ₹{amount:,.2f} — {description}", "success")
         # add_transaction_to_excel({
         #     "date": txn_date,
         #     "description": description,
@@ -1284,28 +1296,24 @@ def edit_transaction(txn_id):
         notes = sanitize(request.form.get("notes", ""))
         person = sanitize(request.form.get("person", ""))
 
-        if not description:
-            flash("Description is required!", "danger")
-            return redirect(url_for("edit_transaction", txn_id=txn_id))
+        # Description is optional — useful for tagging transactions to a person
+        amount = round(amount, 2)
+        cashback_raw = request.form.get("cashback", "0") or "0"
+        cashback = round(float(cashback_raw), 2)
 
-        if amount <= 0:
-            flash("Amount must be greater than zero!", "danger")
+        valid, errors = validate_transaction(description, amount, cashback, txn_type)
+        if not valid:
+            for err in errors.values():
+                flash(err, "danger")
             return redirect(url_for("edit_transaction", txn_id=txn_id))
 
         if category == "Auto":
             category = auto_categorize(description, amount)
 
-        # Manual cashback from user input (optional)
-        cashback_raw = request.form.get("cashback", "0") or "0"
-        print(f"📋 EDIT FORM DATA: {dict(request.form)}")  # DEBUG
-        print(f"📋 CASHBACK RAW: '{cashback_raw}'")
-        cashback = float(cashback_raw)
-        cashback = round(cashback, 2)
-
         conn.execute(
             "UPDATE transactions SET date=?, description=?, amount=?, category=?, card_id=?, txn_type=?, notes=?, person=?, cashback=? "
             "WHERE id=? AND user_id=?",
-            (txn_date, description, round(amount, 2), category, card_id, txn_type, notes, person, cashback, txn_id, user_id)
+            (txn_date, description, amount, category, card_id, txn_type, notes, person, cashback, txn_id, user_id)
         )
         conn.commit()
         conn.close()
