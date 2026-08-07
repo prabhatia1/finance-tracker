@@ -156,6 +156,7 @@
             border: none;
             animation: slideDown 0.3s ease-out;
             margin-bottom: 1rem;
+            font-size: 0.875rem;
         }
 
         @keyframes slideDown {
@@ -165,19 +166,25 @@
 
         .alert-danger {
             background-color: rgba(255, 82, 82, 0.1);
-            color: #ff5252;
+            color: #ff8a80 !important;
             border: 1px solid rgba(255, 82, 82, 0.2);
         }
 
         .alert-success {
             background-color: rgba(0, 230, 118, 0.1);
-            color: #00e676;
+            color: #69f0ae !important;
             border: 1px solid rgba(0, 230, 118, 0.2);
+        }
+
+        .alert-warning {
+            background-color: rgba(255, 193, 7, 0.12);
+            color: #ffd54f !important;
+            border: 1px solid rgba(255, 193, 7, 0.25);
         }
 
         .alert-info {
             background-color: rgba(108, 92, 231, 0.12);
-            color: var(--accent-light);
+            color: var(--accent-light) !important;
             border: 1px solid rgba(108, 92, 231, 0.25);
         }
 
@@ -233,7 +240,7 @@
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
-                            <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show py-2 small">
+                            <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show py-2">
                                 {{ message }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>

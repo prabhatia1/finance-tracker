@@ -37,7 +37,7 @@
                         {% if txn.txn_type == 'debit' %}-{% else %}+{% endif %}₹{{ "%.0f"|format(txn.amount) }}
                     </span>
                 </td>
-                <td><span class="badge-cat bg-blue">{{ txn.category }}</span></td>
+                <td><span class="badge-cat {{ cat_color(txn.category) }}">{{ txn.category }}</span></td>
                 <td class="d-none d-sm-table-cell"><small class="text-secondary-custom">{{ txn.card_id }}</small></td>
                 <td class="d-none d-sm-table-cell text-end">
                     {% if txn.cashback and txn.cashback > 0 %}

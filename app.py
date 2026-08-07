@@ -323,6 +323,44 @@ def save_categories(categories):
     with open(CATEGORIES_PATH, "w") as f:
         json.dump({"categories": categories}, f, indent=2)
 
+
+# ─── Category color grading ──────────────────────────────────────────────────
+# Maps a category's `type` (from categories.json) to a badge color class.
+# The corresponding .bg-* / .badge-cat.bg-* rules live in base.html.
+CATEGORY_TYPE_COLORS = {
+    "daily": "bg-green",
+    "transfer": "bg-green",
+    "transport": "bg-blue",
+    "utility": "bg-blue",
+    "education": "bg-blue",
+    "bill": "bg-orange",
+    "housing": "bg-orange",
+    "entertainment": "bg-purple",
+    "lifestyle": "bg-purple",
+    "health": "bg-red",
+    "insurance": "bg-red",
+    "finance": "bg-red",
+    "other": "bg-blue",
+}
+DEFAULT_CAT_COLOR = "bg-blue"
+
+
+def category_color_class(category_name):
+    """Return the badge color class for a category name, based on its type."""
+    if not category_name:
+        return DEFAULT_CAT_COLOR
+    try:
+        name_to_type = {c["name"]: c.get("type", "other") for c in load_categories()}
+        cat_type = name_to_type.get(category_name, "other")
+        return CATEGORY_TYPE_COLORS.get(cat_type, DEFAULT_CAT_COLOR)
+    except Exception:
+        return DEFAULT_CAT_COLOR
+
+
+@app.context_processor
+def _inject_category_color():
+    return dict(cat_color=category_color_class)
+
 # ─── DB Init ─────────────────────────────────────────────────────────────────
 
 def init_db():
@@ -1060,7 +1098,8 @@ def add_transaction():
         if not valid:
             for err in errors.values():
                 flash(err, "danger")
-            return render_template("add.html", cards=cards, categories=categories, persons=persons)
+            return render_template("add.html", cards=cards, categories=categories, persons=persons,
+                                 today=date.today().strftime("%Y-%m-%d"))
 
         # Auto-categorize if user chose "Auto"
         if category == "Auto":
@@ -1074,17 +1113,6 @@ def add_transaction():
         )
         conn.commit()
         conn.close()
-
-        flash(f"✅ Transaction added: ₹{amount:,.2f} — {description}", "success")
-        # add_transaction_to_excel({
-        #     "date": txn_date,
-        #     "description": description,
-        #     "amount": round(amount, 2),
-        #     "category": category,
-        #     "card_id": card_id,
-        #     "txn_type": txn_type,
-        #     "notes": notes,
-        # })
 
         flash(f"✅ Transaction added: ₹{amount:,.2f} — {description}", "success")
         return redirect(url_for("index"))
@@ -1822,7 +1850,7 @@ def people():
     conn.close()
 
     return render_template("people.html", people=people_rows, recent=recent,
-                         filter_person=filter_person, all_people=load_people())
+                         filter_person=filter_person, all_people=get_user_people(user_id))
 
 
 

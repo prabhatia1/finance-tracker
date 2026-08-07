@@ -67,7 +67,8 @@ def restore(path_str):
 
     restored = []
     with zipfile.ZipFile(path, "r") as z:
-        for member in z.namelist():
+        members = z.namelist()
+        for member in members:
             dest = BASE / member
             # safety: only restore known files
             if dest.name in ("finance.db", "categories.json", "people.json", "finance_tracker.xlsx"):
@@ -75,7 +76,7 @@ def restore(path_str):
                 restored.append(member)
                 print(f"  📄 {member}")
 
-    if "finance.db" in z.namelist():
+    if "finance.db" in members:
         print("\n✅ Restore complete! Restart your Flask app to pick up the restored DB.")
     else:
         print("\n⚠️  Restore finished, but no database was found in the backup.")

@@ -66,7 +66,7 @@
                     <tr>
                         <td><small class="text-muted">{{ loop.index }}</small></td>
                         <td>{{ txn.description }}</td>
-                        <td><span class="badge badge-category bg-blue">{{ txn.category }}</span></td>
+                        <td><span class="badge badge-category {{ cat_color(txn.category) }}">{{ txn.category }}</span></td>
                         <td><small class="text-muted">{{ txn.card_id }}</small></td>
                         <td>
                             <span class="{% if txn.txn_type == 'debit' %}text-red{% else %}text-green{% endif %} fw-semibold">
@@ -235,7 +235,7 @@
                                             <tr>
                                                 <td style="width:55px;padding-left:1.5rem"><small class="text-muted">{{ txn.date[-5:] }}</small></td>
                                                 <td>{{ txn.description[:30] }}{% if txn.description|length>30 %}…{% endif %}</td>
-                                                <td><span class="badge badge-category bg-blue" style="font-size:0.6rem">{{ txn.category }}</span></td>
+                                                <td><span class="badge badge-category {{ cat_color(txn.category) }}" style="font-size:0.6rem">{{ txn.category }}</span></td>
                                                 <td style="width:100px" class="text-end fw-semibold text-{% if txn.txn_type=='debit' %}danger{% else %}success{% endif %}">₹{{ "%.0f"|format(txn.amount) }}</td>
                                                 <td style="width:30px">
                                                     <div class="dropdown">
@@ -292,7 +292,7 @@
                                 <td><small class="text-muted">{{ txn.date }}</small></td>
                                 <td>
                                     <div>{{ txn.description[:30] }}{% if txn.description|length > 30 %}...{% endif %}</div>
-                                    <span class="badge badge-category bg-blue" style="font-size:0.65rem">{{ txn.category }}</span>
+                                    <span class="badge badge-category {{ cat_color(txn.category) }}" style="font-size:0.65rem">{{ txn.category }}</span>
                                 </td>
                                 <td class="fw-semibold text-red">₹{{ "%.2f"|format(txn.amount) }}</td>
                             </tr>

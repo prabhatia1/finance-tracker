@@ -24,7 +24,7 @@
                 <tr>
                     <td>
                         <div class="fw-semibold" style="font-size:0.82rem">{{ txn.description[:30] }}{% if txn.description|length > 30 %}...{% endif %}</div>
-                        <span class="badge-cat bg-blue">{{ txn.category }}</span>
+                        <span class="badge-cat {{ cat_color(txn.category) }}">{{ txn.category }}</span>
                     </td>
                     <td>
                         <span class="{% if txn.txn_type == 'debit' %}text-red{% else %}text-green{% endif %} fw-semibold">
