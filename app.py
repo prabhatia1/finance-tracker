@@ -140,52 +140,13 @@ class PasswordValidator:
 
 # ─── Seed Data for New Users ────────────────────────────────────────────────
 def seed_new_user(user_id):
-    """Add default cards, people, and sample transactions for a new user."""
-    conn = get_db()
-    now = date.today()
+    """New users start with a completely blank account.
 
-    # Default cards
-    default_cards = [
-        ("sbi_cb",  "SBI Cashback",     "Visa"),
-        ("sbi_pp",  "SBI PhonePe",      "Visa"),
-        ("hdfc_mil","HDFC Millennia",    "Visa"),
-        ("hdfc_swig","HDFC Swiggy",      "Visa"),
-        ("bob_eterna","BOB Eterna",      "RuPay"),
-    ]
-    for cid, nm, tp in default_cards:
-        conn.execute(
-            "INSERT OR IGNORE INTO user_cards (user_id, card_id, name, type) VALUES (?,?,?,?)",
-            (user_id, cid, nm, tp))
-
-    # Default people
-    for nm in ["Sister", "Brother", "Dad"]:
-        conn.execute(
-            "INSERT OR IGNORE INTO user_people (user_id, name) VALUES (?,?)",
-            (user_id, nm))
-
-    # Sample transactions (current month)
-    sample = [
-        (f"{now.year}-{now.month:02d}-01", "Electricity Bill",  1250, "Electricity Bill",  "sbi_cb",  "",          "",  "debit"),
-        (f"{now.year}-{now.month:02d}-03", "Big Basket",         845,  "Groceries",         "hdfc_mil","",          "",  "debit"),
-        (f"{now.year}-{now.month:02d}-05", "Zomato Order",       320,  "Dining / Food",     "sbi_pp",  "",          "",  "debit"),
-        (f"{now.year}-{now.month:02d}-07", "Petrol",            1500,  "Fuel",              "hdfc_swig","",         "",  "debit"),
-        (f"{now.year}-{now.month:02d}-10", "Netflix",            499,  "Entertainment",     "hdfc_mil","Monthly",   "",  "debit"),
-        (f"{now.year}-{now.month:02d}-12", "Amazon Shopping",   1200,  "Shopping",          "sbi_cb",  "Electronics","",  "debit"),
-        (f"{now.year}-{now.month:02d}-15", "LIC Premium",       5000,  "LIC Premium",       "hdfc_mil","Yearly",    "",  "debit"),
-        (f"{now.year}-{now.month:02d}-18", "Mobile Recharge",    299,  "Recharge / Mobile",  "sbi_pp",  "",          "", "debit"),
-        (f"{now.year}-{now.month:02d}-20", "D Mart",            1560,  "Groceries",         "bob_eterna","",        "Sister","debit"),
-        (f"{now.year}-{now.month:02d}-22", "Ola Cab",            250,  "Travel",            "sbi_cb",  "Office",     "",  "debit"),
-        (f"{now.year}-{now.month:02d}-25", "Medicine",           340,  "Medical / Health",   "hdfc_mil","Pharmacy",  "Dad","debit"),
-        (f"{now.year}-{now.month:02d}-28", "Swiggy",             180,  "Dining / Food",     "sbi_cb",  "",          "",  "debit"),
-        (f"{now.year}-{now.month:02d}-01", "Salary",          75000,  "Other",             "other",   "Credit",     "",  "credit"),
-    ]
-    for dt, desc, amt, cat, card, notes, person, ttype in sample:
-        conn.execute(
-            "INSERT INTO transactions (date, description, amount, category, card_id, txn_type, notes, source, user_id, person) VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (dt, desc, abs(amt), cat, card, ttype, notes, "seed", user_id, person))
-
-    conn.commit()
-    conn.close()
+    No default cards, people, or sample transactions are auto-created.
+    Users set up their own cards/people from the Settings page before
+    adding transactions.
+    """
+    return
 
 # ─── Login helper ────────────────────────────────────────────────────────────
 from functools import wraps
