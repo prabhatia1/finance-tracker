@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-file-earmark-arrow-up text-blue"></i> Import Statement
+            </div>
+            <div class="card-body p-3 p-md-4">
+                <form method="POST" action="/upload" enctype="multipart/form-data" id="uploadForm"
+                      onsubmit="document.querySelector('.btn-submit').disabled=true; document.querySelector('.btn-submit').innerHTML='Processing...'">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Statement File <span class="text-red">*</span></label>
+                        <input type="file" class="form-control" name="file" accept=".csv,.pdf" required>
+                        <div class="form-text">Upload a CSV or PDF bank/credit card statement</div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Bank / Card</label>
+                            <select class="form-select" name="card_id">
+                                <option value="auto">Auto-detect from description</option>
+                                {% for card in cards %}
+                                <option value="{{ card.id }}">{{ card.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Assign all transactions to a specific card, or let the app guess</div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">PDF Password <small class="text-secondary-custom">(if applicable)</small></label>
+                            <input type="password" class="form-control" name="pdf_password" placeholder="Only for PDF statements" autocomplete="off">
+                            <div class="form-text">Enter the password your bank set on the PDF</div>
+                        </div>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="preview" value="1" id="previewCheck" checked>
+                        <label class="form-check-label small" for="previewCheck">
+                            <strong>Review before saving</strong> — check the parsed rows, tag people and fix
+                            categories on the next screen. Nothing is written until you confirm.
+                        </label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success btn-submit px-4">
+                            <i class="bi bi-cloud-arrow-up"></i> Upload
+                        </button>
+                        <a href="/" class="btn btn-outline-light">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if pending_count %}
+        <div class="alert alert-warning mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>
+                <i class="bi bi-hourglass-split"></i>
+                You have <strong>{{ pending_count }}</strong> row(s) waiting to be reviewed.
+            </span>
+            <a href="{{ url_for('import_review') }}" class="btn btn-sm btn-warning">
+                <i class="bi bi-pencil-square"></i> Resume review
+            </a>
+        </div>
+        {% endif %}
+
+        {% if errors %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-exclamation-triangle text-orange"></i> Parser Messages ({{ errors|length }})
+            </div>
+            <div class="card-body p-2">
+                <ul class="small text-muted mb-0" style="max-height:150px;overflow-y:auto">
+                    {% for err in errors[:20] %}
+                    <li>{{ err }}</li>
+                    {% endfor %}
+                    {% if errors|length > 20 %}
+                    <li>... and {{ errors|length - 20 }} more</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if debug_info and debug_info.tables %}
+        <!-- Debug: raw table structure -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-bug text-danger"></i> Debug — Raw PDF Table Structure ({{ debug_info.page_count }} pages)
+            </div>
+            <div class="card-body p-2">
+                {% for tbl in debug_info.tables %}
+                <h6 class="mt-2 mb-1">Table on page {{ tbl.page }} ({{ tbl.total_rows }} rows)</h6>
+                <pre class="small text-info mb-2">Header index: {{ tbl.header_idx }}
+Mapping: {{ tbl.mapping }}</pre>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-2" style="font-size:0.7rem">
+                        <tbody>
+                            {% for row in tbl.raw_rows %}
+                            <tr>
+                                <td class="text-muted" style="width:30px">{{ row.row }}</td>
+                                {% for cell in row.cells %}
+                                <td>{{ cell }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+                <p class="small text-muted mb-0">
+                    Copy this table and the mapping above and share it with me — I can fix the parser
+                    once I see exactly how your bank lays out the columns.
+                </p>
+            </div>
+        </div>
+        {% elif debug_info and debug_info.text_sample %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-bug text-danger"></i> Debug — Raw Text (no tables detected)
+            </div>
+            <div class="card-body p-2">
+                <pre class="small text-info mb-0" style="max-height:200px;overflow:auto">{{ debug_info.text_sample }}</pre>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Supported formats -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="mb-2"><i class="bi bi-bank text-orange"></i> Supported Statement Formats</h6>
+                <div class="row g-2 small text-secondary-custom">
+                    <div class="col-6 col-md-3"><i class="bi bi-check-lg text-green"></i> HDFC</div>
+                    <div class="col-6 col-md-3"><i class="bi bi-check-lg text-green"></i> SBI</div>
+                    <div class="col-6 col-md-3"><i class="bi bi-check-lg text-green"></i> ICICI</div>
+                    <div class="col-6 col-md-3"><i class="bi bi-check-lg text-green"></i> Axis</div>
+                    <div class="col-6 col-md-3"><i class="bi bi-check-lg text-green"></i> CSV (any bank)</div>
+                    <div class="col-6 col-md-3"><i class="bi bi-check-lg text-green"></i> Password-protected PDF</div>
+                    <div class="col-6 col-md-3"><i class="bi bi-check-lg text-green"></i> DD/MM/YYYY dates</div>
+                    <div class="col-6 col-md-3"><i class="bi bi-check-lg text-green"></i> Indian number format</div>
+                </div>
+                <hr class="my-2 border-subtle">
+                <p class="small text-muted mb-0">
+                    <strong>Tips:</strong><br>
+                    Use <strong>Preview first</strong> to verify transactions are detected correctly before saving.<br>
+                    Export your bank statement as CSV when possible (fastest, most accurate).<br>
+                    For PDFs, the password is usually your card's last 4 digits or date of birth.<br>
+                    After import, review your transactions — you can edit or delete any that look wrong.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

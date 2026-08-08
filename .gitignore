@@ -30,6 +30,10 @@ expense_tracker.xlsx
 finance_tracker_backup.zip
 test_report.xlsx
 *.bak
+*.bak_*
+finance.db.bak*
+finance.db-wal
+finance.db-shm
 *.log
 
 # Flask

@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% block content %}
+
+<form method="POST" action="{{ url_for('import_review') }}" id="reviewForm">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="page" value="{{ page }}">
+
+<!-- ════════ HEADER / SUMMARY ════════ -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-pencil-square text-orange"></i> Review Import</span>
+        <span class="small">
+            <span class="text-green fw-semibold">{{ included_count }}</span> of {{ total_count }} selected
+        </span>
+    </div>
+    <div class="card-body p-3">
+        <div class="row g-2 text-center mb-3">
+            <div class="col-6 col-md-3">
+                <div class="p-2 rounded" style="background:var(--bg-elevated)">
+                    <div class="small text-secondary-custom">Selected</div>
+                    <div class="fw-bold">{{ included_count }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-2 rounded" style="background:var(--bg-elevated)">
+                    <div class="small text-secondary-custom">Debits</div>
+                    <div class="fw-bold text-red">₹{{ "%.2f"|format(debit_total) }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-2 rounded" style="background:var(--bg-elevated)">
+                    <div class="small text-secondary-custom">Credits</div>
+                    <div class="fw-bold text-green">₹{{ "%.2f"|format(credit_total) }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="p-2 rounded" style="background:var(--bg-elevated)">
+                    <div class="small text-secondary-custom">Possible duplicates</div>
+                    <div class="fw-bold {% if duplicate_count %}text-orange{% endif %}">{{ duplicate_count }}</div>
+                </div>
+            </div>
+        </div>
+
+        {% if duplicate_count %}
+        <div class="alert alert-warning py-2 small mb-3">
+            <i class="bi bi-exclamation-triangle"></i>
+            {{ duplicate_count }} row(s) look like transactions you already have — they've been
+            <strong>unticked</strong> so they won't be imported twice. Tick one to import it anyway.
+        </div>
+        {% endif %}
+
+        <!-- ── Bulk actions ── -->
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label small mb-1">Set field</label>
+                <select class="form-select form-select-sm" name="bulk_field" id="bulkField">
+                    <option value="person">Person</option>
+                    <option value="category">Category</option>
+                    <option value="txn_type">Type</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label small mb-1">To value</label>
+                {# One dropdown per field; only the active one is enabled, and
+                   disabled controls are not submitted, so exactly one value posts. #}
+                <select class="form-select form-select-sm bulk-value" data-for="person" name="bulk_value">
+                    <option value="">— None (clear person) —</option>
+                    {% for p in persons %}
+                    <option value="{{ p }}">{{ p }}</option>
+                    {% endfor %}
+                </select>
+
+                <select class="form-select form-select-sm bulk-value" data-for="category"
+                        name="bulk_value" disabled hidden>
+                    {% for c in categories %}
+                    <option value="{{ c.name }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <select class="form-select form-select-sm bulk-value" data-for="txn_type"
+                        name="bulk_value" disabled hidden>
+                    <option value="debit">Debit</option>
+                    <option value="credit">Credit</option>
+                </select>
+
+                {% if not persons %}
+                <div class="form-text">No people yet — use <em>Add Person</em> below.</div>
+                {% endif %}
+            </div>
+            <div class="col-7 col-md-3">
+                <label class="form-label small mb-1">Apply to</label>
+                <select class="form-select form-select-sm" name="bulk_target">
+                    <option value="included">Selected rows only</option>
+                    <option value="all">All {{ total_count }} rows</option>
+                </select>
+            </div>
+            <div class="col-5 col-md-2">
+                <button type="submit" name="action" value="bulk_apply" class="btn btn-sm btn-outline-light w-100">
+                    <i class="bi bi-lightning"></i> Apply
+                </button>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <button type="submit" name="action" value="include_all" class="btn btn-sm btn-outline-light">Select all</button>
+            <button type="submit" name="action" value="exclude_all" class="btn btn-sm btn-outline-light">Deselect all</button>
+            {% if duplicate_count %}
+            <button type="submit" name="action" value="exclude_duplicates" class="btn btn-sm btn-outline-warning">
+                Deselect duplicates
+            </button>
+            {% endif %}
+            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#addPersonModal">
+                <i class="bi bi-person-plus"></i> Add Person
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════ EDITABLE ROWS ════════ -->
+<div class="card mb-3">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.82rem">
+                <thead>
+                    <tr>
+                        <th style="width:34px" class="text-center">
+                            <input type="checkbox" class="form-check-input" id="toggleAll" title="Toggle page">
+                        </th>
+                        <th style="min-width:130px">Date</th>
+                        <th style="min-width:220px">Description</th>
+                        <th style="min-width:120px" class="text-end">Amount</th>
+                        <th style="min-width:100px">Type</th>
+                        <th style="min-width:150px">Category</th>
+                        <th style="min-width:140px">Person</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                    <tr class="{% if r.is_duplicate %}table-warning-subtle{% endif %}">
+                        <td class="text-center">
+                            <input type="hidden" name="row_id" value="{{ r.id }}">
+                            <input class="form-check-input row-check" type="checkbox"
+                                   name="included" value="{{ r.id }}" {% if r.included %}checked{% endif %}>
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm"
+                                   name="date_{{ r.id }}" value="{{ r.date }}">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm"
+                                   name="desc_{{ r.id }}" value="{{ r.description }}">
+                            {% if r.is_duplicate %}
+                            <span class="badge bg-warning text-dark mt-1" style="font-size:0.62rem">possible duplicate</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" min="0"
+                                   class="form-control form-control-sm text-end"
+                                   name="amount_{{ r.id }}" value="{{ '%.2f'|format(r.amount) }}">
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm" name="type_{{ r.id }}">
+                                <option value="debit"  {% if r.txn_type == 'debit'  %}selected{% endif %}>Debit</option>
+                                <option value="credit" {% if r.txn_type == 'credit' %}selected{% endif %}>Credit</option>
+                            </select>
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm" name="category_{{ r.id }}">
+                                {% set cat_names = categories | map(attribute='name') | list %}
+                                {% if r.category not in cat_names %}
+                                <option value="{{ r.category }}" selected>{{ r.category }}</option>
+                                {% endif %}
+                                {% for c in categories %}
+                                <option value="{{ c.name }}" {% if c.name == r.category %}selected{% endif %}>{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm" name="person_{{ r.id }}">
+                                <option value="">— None —</option>
+                                {% if r.person and r.person not in persons %}
+                                <option value="{{ r.person }}" selected>{{ r.person }}</option>
+                                {% endif %}
+                                {% for p in persons %}
+                                <option value="{{ p }}" {% if p == r.person %}selected{% endif %}>{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if pages > 1 %}
+    <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <small class="text-secondary-custom">
+            Page {{ page }} of {{ pages }} — showing {{ rows|length }} of {{ total_count }} rows
+        </small>
+        <div class="btn-group btn-group-sm">
+            <button type="submit" name="action" value="save_edits"
+                    class="btn btn-outline-light" {% if page <= 1 %}disabled{% endif %}
+                    onclick="document.querySelector('[name=page]').value={{ page - 1 }}">
+                <i class="bi bi-chevron-left"></i> Prev
+            </button>
+            <button type="submit" name="action" value="save_edits"
+                    class="btn btn-outline-light" {% if page >= pages %}disabled{% endif %}
+                    onclick="document.querySelector('[name=page]').value={{ page + 1 }}">
+                Next <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+    <div class="card-footer py-2 small text-muted">
+        <i class="bi bi-info-circle"></i> Your edits are kept as you go — changing page, adding a
+        person, or applying a bulk action saves them. Saving imports only the ticked rows.
+    </div>
+</div>
+
+<!-- ════════ SAVE / DISCARD ════════ -->
+<div class="card mb-3">
+    <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+        <button type="submit" name="action" value="commit" class="btn btn-success px-4">
+            <i class="bi bi-check2-circle"></i>
+            Save {{ included_count }} Transaction{% if included_count != 1 %}s{% endif %}
+        </button>
+        <button type="submit" name="action" value="discard" class="btn btn-outline-danger ms-auto"
+                onclick="return confirm('Discard this import? Nothing will be saved.')">
+            <i class="bi bi-trash"></i> Discard
+        </button>
+    </div>
+</div>
+
+{% if errors %}
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="bi bi-exclamation-triangle text-orange"></i> Parser Messages ({{ errors|length }})
+    </div>
+    <div class="card-body p-2">
+        <ul class="small text-muted mb-0" style="max-height:150px;overflow-y:auto">
+            {% for err in errors %}<li>{{ err }}</li>{% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+</form>
+
+<!-- Add Person Modal — posts through the review form so edits are kept -->
+<div class="modal fade" id="addPersonModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-person-plus text-info"></i> Add Person</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="newPersonName" class="form-control"
+                       placeholder="Person name" autofocus>
+                <div class="form-text">Your edits on this page are saved too.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success btn-sm" id="addPersonBtn">
+                    <i class="bi bi-check-lg"></i> Add Person
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle every checkbox on the current page.
+    document.getElementById('toggleAll')?.addEventListener('change', function () {
+        document.querySelectorAll('.row-check').forEach(cb => { cb.checked = this.checked; });
+    });
+
+    // Show only the value dropdown matching the chosen field. Hidden ones are
+    // disabled so the browser omits them and a single bulk_value is submitted.
+    const bulkField = document.getElementById('bulkField');
+    function syncBulkValue() {
+        const want = bulkField.value;
+        document.querySelectorAll('.bulk-value').forEach(sel => {
+            const on = sel.dataset.for === want;
+            sel.disabled = !on;
+            sel.hidden = !on;
+        });
+    }
+    bulkField?.addEventListener('change', syncBulkValue);
+    syncBulkValue();
+
+    // Submit "add person" through the main form so in-progress edits persist.
+    document.getElementById('addPersonBtn')?.addEventListener('click', function () {
+        const name = document.getElementById('newPersonName').value.trim();
+        if (!name) return;
+        const form = document.getElementById('reviewForm');
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden'; hidden.name = 'person_name'; hidden.value = name;
+        form.appendChild(hidden);
+        const act = document.createElement('input');
+        act.type = 'hidden'; act.name = 'action'; act.value = 'add_person';
+        form.appendChild(act);
+        form.submit();
+    });
+</script>
+
+{% endblock %}
