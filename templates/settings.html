@@ -80,7 +80,7 @@
                             <tr>
                                 <td class="fw-semibold">{{ cat.name }}</td>
                                 <td>
-                                    <div style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+                                    <div style="max-width:250px; overflow-wrap:anywhere" class="d-flex flex-wrap gap-1">
                                         {% for kw in cat.keywords[:5] %}
                                         <span class="badge bg-blue" style="font-size:0.6rem">{{ kw }}</span>
                                         {% endfor %}
@@ -264,8 +264,8 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label small">New Password</label>
-                <input type="password" class="form-control form-control-sm" name="new_password" required minlength="6">
-                <div class="form-text small text-muted">At least 6 characters, 1 uppercase, 1 lowercase, 1 digit</div>
+                <input type="password" class="form-control form-control-sm" name="new_password" required minlength="6"
+                       title="At least 6 characters, 1 uppercase, 1 lowercase, 1 digit">
             </div>
             <div class="col-md-3">
                 <label class="form-label small">Confirm New</label>
@@ -273,6 +273,9 @@
             </div>
             <div class="col-md-2">
                 <button class="btn btn-sm btn-warning w-100"><i class="bi bi-check-lg"></i> Update</button>
+            </div>
+            <div class="col-12 mt-1">
+                <small class="text-muted">Password must be at least 6 characters, with 1 uppercase, 1 lowercase, and 1 digit.</small>
             </div>
         </form>
     </div>

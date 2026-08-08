@@ -11,7 +11,7 @@
 <!-- Cashback per Card Summary -->
 <div class="row g-3 mb-4">
     {% for cid, data in card_totals.items() %}
-    <div class="col-md-4 col-lg-3">
+    <div class="col-6 col-md-4 col-lg-3">
         <div class="stat-card">
             <div class="d-flex justify-content-between align-items-start mb-2">
                 <span class="stat-label">{{ data.label or cid }}</span>
@@ -44,11 +44,11 @@
                     <tr>
                         <th>Date</th>
                         <th>Description</th>
-                        <th>Category</th>
-                        <th>Bank / Card</th>
+                        <th class="d-none d-sm-table-cell">Category</th>
+                        <th class="d-none d-md-table-cell">Bank / Card</th>
                         <th class="text-end">Amount</th>
                         <th class="text-end">Cashback</th>
-                        <th class="text-end">Effective Rate</th>
+                        <th class="d-none d-lg-table-cell text-end">Effective Rate</th>
                         <th style="width:30px"></th>
                     </tr>
                 </thead>
@@ -57,12 +57,12 @@
                     <tr>
                         <td class="text-nowrap">{{ t.date }}</td>
                         <td>{{ t.description }}</td>
-                        <td><span class="badge badge-category {{ cat_color(t.category) }}">{{ t.category }}</span></td>
-                        <td><code>{{ t.card_id or 'other' }}</code></td>
+                        <td class="d-none d-sm-table-cell"><span class="badge badge-category {{ cat_color(t.category) }}">{{ t.category }}</span></td>
+                        <td class="d-none d-md-table-cell"><code>{{ t.card_id or 'other' }}</code></td>
                         <td class="text-end {% if t.txn_type == 'credit' %}text-green{% else %}text-danger{% endif %}">
                             {% if t.txn_type == 'credit' %}+{% endif %}₹{{ "%.2f"|format(t.amount) }}
                         <td class="text-end text-success fw-semibold">+₹{{ "%.2f"|format(t.cashback) }}</td>
-                        <td class="text-end text-muted">
+                        <td class="d-none d-lg-table-cell text-end text-muted">
                             {% if t.amount > 0 %}
                             {{ "%.1f"|format(t.cashback / t.amount * 100) }}%
                             {% else %}—{% endif %}

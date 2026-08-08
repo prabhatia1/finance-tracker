@@ -15,10 +15,10 @@
                             <tr>
                                 <th>Month</th>
                                 <th class="text-end">Start Balance</th>
-                                <th class="text-end">Total Debit</th>
-                                <th class="text-end">Total Credit</th>
-                                <th class="text-end">Net Change</th>
-                                <th class="text-end">Expected End</th>
+                                <th class="d-none d-md-table-cell text-end">Total Debit</th>
+                                <th class="d-none d-md-table-cell text-end">Total Credit</th>
+                                <th class="d-none d-lg-table-cell text-end">Net Change</th>
+                                <th class="d-none d-lg-table-cell text-end">Expected End</th>
                                 <th class="text-end">Actual End</th>
                                 <th class="text-end">Difference</th>
                                 <th></th>
@@ -38,12 +38,12 @@
                                                style="width:120px" value="{{ m.start_balance }}">
                                     </form>
                                 </td>
-                                <td class="text-end text-red">₹{{ "%.2f"|format(m.total_debit) }}</td>
-                                <td class="text-end text-green">₹{{ "%.2f"|format(m.total_credit) }}</td>
-                                <td class="text-end {% if m.net_change >= 0 %}text-green{% else %}text-red{% endif %}">
+                                <td class="d-none d-md-table-cell text-end text-red">₹{{ "%.2f"|format(m.total_debit) }}</td>
+                                <td class="d-none d-md-table-cell text-end text-green">₹{{ "%.2f"|format(m.total_credit) }}</td>
+                                <td class="d-none d-lg-table-cell text-end {% if m.net_change >= 0 %}text-green{% else %}text-red{% endif %}">
                                     ₹{{ "%.2f"|format(m.net_change) }}
                                 </td>
-                                <td class="text-end text-muted">₹{{ "%.2f"|format(m.expected_end) }}</td>
+                                <td class="d-none d-lg-table-cell text-end text-muted">₹{{ "%.2f"|format(m.expected_end) }}</td>
                                 <td class="text-end">
                                     <form method="POST" action="/balances" class="d-inline">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -66,11 +66,7 @@
                                         <span class="text-muted">—</span>
                                     {% endif %}
                                 </td>
-                                <td>
-                                    <button type="submit" class="btn btn-sm btn-outline-primary border-0 save-btn" title="Save" style="display:none">
-                                        <i class="bi bi-check-lg"></i>
-                                    </button>
-                                </td>
+                                <td></td>
                             </tr>
                             {% endfor %}
                         </tbody>
