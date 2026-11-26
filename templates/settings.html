@@ -213,18 +213,16 @@
     </div>
 </div>
 
-{% if session.get('username') == 'pratik' %}
 <!-- Backup Download -->
 <div class="card mt-3">
     <div class="card-header">
         <i class="bi bi-download me-1"></i> Backup & Migration
     </div>
     <div class="card-body">
-        <p class="small text-muted mb-2">Download your full database + categories to migrate to another host.</p>
+        <p class="small text-muted mb-2">Download this account's transactions, balances, cards, people, and categories as a portable backup.</p>
         <a href="/backup-download" class="btn btn-outline-light"><i class="bi bi-file-zip"></i> Download Backup (.zip)</a>
     </div>
 </div>
-{% endif %}
 
 <!-- Security Word -->
 <div class="card mt-3">
@@ -264,18 +262,17 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label small">New Password</label>
-                <input type="password" class="form-control form-control-sm" name="new_password" required minlength="6"
-                       title="At least 6 characters, 1 uppercase, 1 lowercase, 1 digit">
+                <input type="password" class="form-control form-control-sm" name="new_password" required>
             </div>
             <div class="col-md-3">
                 <label class="form-label small">Confirm New</label>
-                <input type="password" class="form-control form-control-sm" name="confirm_password" required minlength="6">
+                <input type="password" class="form-control form-control-sm" name="confirm_password" required>
             </div>
             <div class="col-md-2">
                 <button class="btn btn-sm btn-warning w-100"><i class="bi bi-check-lg"></i> Update</button>
             </div>
             <div class="col-12 mt-1">
-                <small class="text-muted">Password must be at least 6 characters, with 1 uppercase, 1 lowercase, and 1 digit.</small>
+                <small class="text-muted">Choose a password you can remember.</small>
             </div>
         </form>
     </div>

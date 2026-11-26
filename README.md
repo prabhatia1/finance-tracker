@@ -11,7 +11,7 @@ A personal finance tracking web app built with **Flask + SQLite** — track expe
 ## ✨ Features
 
 ### 🔐 Multi-User
-- **Registration & Login** — Each user has their own account
+- **Registration & Login** — Each user has their own account; passwords are required but may be weak
 - **Per-user data isolation** — Transactions, cards, people and monthly balances are all scoped to the owning account
 - **Display name** — Customizable name shown on dashboard and People pages
 - **Password recovery** — Set a security word in Settings → use `/forgot-password` to reset without email
@@ -93,6 +93,7 @@ Add, edit, or remove cards anytime from the Settings page.
 
 ### 📦 Backup & Restore
 - **CLI tool** — `backup_restore.py` creates and restores timestamped zip archives
+- **Account export** — Settings → Backup downloads a portable, account-scoped JSON backup without password credentials
 
 ---
 
@@ -125,6 +126,14 @@ Open **http://127.0.0.1:5000** in your browser.
 2. Log in with your credentials
 3. Configure your cards, categories, and people from the Settings page
 4. Start adding transactions — or import a statement from **Import Statement**
+
+### Vercel Deployment
+
+The hosted deployment uses Vercel Functions with a Neon PostgreSQL database. Set
+`DATABASE_URL` and `SECRET_KEY` in the Vercel project before deploying. The
+local `finance.db` is intentionally excluded from deployments because Vercel's
+filesystem is not persistent. Use Settings → Backup for an account-scoped
+export from the hosted database; the local CLI backup remains for SQLite.
 
 ---
 

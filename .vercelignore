@@ -1,0 +1,14 @@
+.secret_key
+.env
+.env.*
+finance.db
+finance.db-*
+finance.db.*
+*.bak
+*.bak_*
+*.xlsx
+*.zip
+backups/
+__pycache__/
+.venv/
+venv/

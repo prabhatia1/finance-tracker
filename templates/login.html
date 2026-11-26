@@ -102,7 +102,7 @@
             opacity: 1;
         }
 
-        .form-control:invalid {
+        .form-control:user-invalid {
             border-color: #ff5252;
         }
 
@@ -343,7 +343,28 @@
 
         // ─── Form Submission ─────────────────────────────────────────────
         let formSubmitted = false;
-        document.getElem...[truncated]
+        const loginForm = document.getElementById('loginForm');
+        const submitButton = document.getElementById('submitBtn');
+        const buttonText = document.getElementById('btnText');
+        const spinner = document.getElementById('spinner');
+
+        loginForm.addEventListener('submit', function(event) {
+            if (!loginForm.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+                loginForm.classList.add('was-validated');
+                return;
+            }
+            if (formSubmitted) {
+                event.preventDefault();
+                return;
+            }
+
+            formSubmitted = true;
+            submitButton.disabled = true;
+            buttonText.textContent = 'Signing in...';
+            spinner.style.display = 'inline-block';
+        });
     </script>
 </body>
 </html>

@@ -52,3 +52,6 @@ create_test_report.py
 
 # Local dev utilities (not part of the app)
 server-wrapper.bat
+
+.vercel
+.env*

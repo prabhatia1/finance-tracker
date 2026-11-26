@@ -128,9 +128,11 @@ def _parse_date(raw_date, formats=None):
 _AMOUNT_TOKEN_RE = re.compile(r'^\(?(?:Rs\.?|INR|₹)?\s*'
                               r'(?:\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?|\d+\.\d{1,2})'
                               r'\)?\s*(?:DR|CR|DBT|CRT|D|C)?$', re.IGNORECASE)
-# Inside a known numeric column a bare integer is acceptable too.
+# Inside a known numeric column a bare integer is acceptable too. SBI and some
+# co-operative banks print whole rupees with no decimals and no separator
+# ("1500"), so the digit run must not be capped at 3 the way the strict form is.
 _LOOSE_AMOUNT_TOKEN_RE = re.compile(r'^\(?(?:Rs\.?|INR|₹)?\s*'
-                                    r'\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?'
+                                    r'(?:\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)'
                                     r'\)?\s*(?:DR|CR|DBT|CRT|D|C)?$', re.IGNORECASE)
 _DATE_TOKEN_RE = re.compile(r'^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$')
 _DATE_WORD_RE = re.compile(r'^\d{1,2}[\s-]?[A-Za-z]{3,9}[\s-]?\d{2,4}$')
@@ -200,12 +202,14 @@ def _classify_header(text):
     if k.startswith("post") and ("dt" in k or "date" in k):
         return "value_date"
 
-    if "withdrawal" in k or "moneyout" in k or "amountwithdrawn" in k:
+    if "withdrawal" in k or "moneyout" in k or "amountwithdrawn" in k \
+            or "paidout" in k or "amountpaid" in k or k.startswith("outflow"):
         return "debit"
     if k in ("debit", "dr", "debits", "dramount", "debited") or k.startswith("debitamt") \
             or k.startswith("debitamount") or k.startswith("debitrs") or k.startswith("debitinr"):
         return "debit"
-    if "deposit" in k or "moneyin" in k or "amountdeposited" in k:
+    if "deposit" in k or "moneyin" in k or "amountdeposited" in k \
+            or "paidin" in k or "amountreceived" in k or k.startswith("inflow"):
         return "credit"
     if k in ("credit", "cr", "credits", "cramount", "credited") or k.startswith("creditamt") \
             or k.startswith("creditamount") or k.startswith("creditrs") or k.startswith("creditinr"):
@@ -213,12 +217,14 @@ def _classify_header(text):
     if "balance" in k or k in ("bal", "closingbal", "openingbal"):
         return "balance"
     if k in ("drcr", "crdr", "type", "txntype", "transactiontype", "dc", "cd",
-             "debitcredit", "creditdebit", "trxntype"):
+             "debitcredit", "creditdebit", "trxntype", "drcrindicator",
+             "transactiontype", "crdrindicator", "indicator", "mode"):
         return "type_col"
     if "chq" in k or "cheque" in k or k == "utr" or "refno" in k or k.startswith("ref") \
-            or "referenceno" in k or "refnumber" in k:
+            or "referenceno" in k or "refnumber" in k or "transactionid" in k \
+            or k in ("txnid", "utrno", "instrumentno", "instrno"):
         return "ref"
-    if "serno" in k or k in ("srno", "sno", "slno", "serialno"):
+    if "serno" in k or k in ("srno", "sno", "slno", "serialno", "sr", "no"):
         return "serial"
     if "rewardpoint" in k or k == "points":
         return "points"
@@ -229,9 +235,11 @@ def _classify_header(text):
     if "date" in k or k in ("dt", "txndt", "trandt", "trxndate"):
         return "date"
     if any(x in k for x in ("narration", "narrative", "particular", "description",
-                            "detail", "remark", "merchant")):
+                            "detail", "remark", "merchant", "transactioninfo",
+                            "purpose")):
         return "desc"
-    if "amount" in k or k in ("amt", "value", "txnamt", "billamt"):
+    if "amount" in k or k in ("amt", "value", "txnamt", "billamt", "amountrs",
+                              "amountinr", "transactionamt"):
         return "amount"
     if k in ("transaction", "transactions", "txn"):
         return "desc"
@@ -379,7 +387,12 @@ CREDIT_KEYWORDS = [
 
 def _looks_like_credit(desc):
     lower = str(desc or "").lower()
-    return any(k in lower for k in CREDIT_KEYWORDS)
+    if any(k in lower for k in CREDIT_KEYWORDS):
+        return True
+    # Passbook convention used by SBI and most co-operative banks: an entry
+    # beginning "By ..." is money in, "To ..." is money out. Anchored at the
+    # start so a narration merely containing " by " is unaffected.
+    return bool(re.match(r'^\s*by\s', lower))
 
 
 def _new_txn(date, desc, amount, txn_type):
@@ -564,16 +577,27 @@ def _headerless_row(line):
     row = _blank_row()
     idx = 0
 
-    # Leading date, possibly split across tokens ("05 Aug 2026").
+    # Leading date, possibly split across tokens ("05 Aug 2026"). Prefer the
+    # longest span that is *entirely* a date: _parse_date() also matches a date
+    # embedded in a longer string, so testing "01/08/2026 BY CASH" first would
+    # succeed and swallow the narration into the date span.
     for span in (3, 2, 1):
         if len(words) >= span:
             candidate = " ".join(w["text"] for w in words[:span])
-            if _is_date_token(candidate) or _parse_date(candidate):
+            if _is_date_token(candidate):
                 parsed = _parse_date(candidate)
                 if parsed:
                     row["date"] = parsed
                     idx = span
                     break
+    else:
+        # Nothing matched cleanly — allow a single token to be parsed loosely
+        # (covers compact forms like "05Aug2026").
+        if words:
+            parsed = _parse_date(words[0]["text"])
+            if parsed:
+                row["date"] = parsed
+                idx = 1
     # Trailing amounts (plus an optional Dr/Cr marker after them).
     tail = []
     j = len(words) - 1
@@ -777,13 +801,47 @@ def _rows_to_transactions(rows, opening_balance=None):
     return [t for t in txns if t["amount"] > 0], warnings
 
 
+def _collect_headerless_rows(pdf):
+    """Second-pass fallback: parse every line positionally, with no header row.
+
+    Some co-operative / regional statements and passbook extracts never print a
+    recognisable header, so `_collect_rows` finds no column layout and returns
+    nothing. Here each line is parsed on its own shape (leading date, trailing
+    amounts) and only dated rows carrying money are kept, which keeps statement
+    chrome out without needing to know the bank.
+    """
+    rows = []
+    for page_no, page in enumerate(pdf.pages, 1):
+        for line in _page_lines(page):
+            if _is_noise_line(line["text"]):
+                continue
+            row = _headerless_row(line)
+            if not row or not row["date"]:
+                continue
+            if row["amount"] is None and row["debit"] is None and row["credit"] is None:
+                continue
+            row["page"] = page_no
+            rows.append(row)
+    return rows
+
+
 def _parse_coordinates(pdf):
     """Primary strategy: rebuild rows from word positions."""
     rows, saw_header, warnings = _collect_rows(pdf)
+    opening = _find_opening_balance(pdf)
+
+    if rows:
+        txns, warn2 = _rows_to_transactions(rows, opening_balance=opening)
+        if txns:
+            return txns, warnings + warn2
+
+    # No header was found (or it yielded nothing usable) — retry positionally.
+    rows = _collect_headerless_rows(pdf)
     if not rows:
         return [], warnings
-    opening = _find_opening_balance(pdf)
     txns, warn2 = _rows_to_transactions(rows, opening_balance=opening)
+    if txns:
+        warnings.append("No column header found — rows were read by position")
     return txns, warnings + warn2
 
 
@@ -914,20 +972,59 @@ def _parse_tables(pdf, opening_balance=None):
 
 # ─── Text/regex engine (last resort) ──────────────────────────────────────────
 
-TEXT_PATTERNS = [
-    re.compile(r'(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\s+(.+?)\s+'
-               r'([\d,]+\.\d{1,2}\s*(?:DR|CR|DBT|CRT|D|C)?)$', re.IGNORECASE),
-    re.compile(r'(\d{1,2}[\s-]\w{3,9}[\s-]\d{2,4})\s+(.+?)\s+'
-               r'([\d,]+\.\d{1,2}\s*(?:DR|CR|DBT|CRT|D|C)?)$', re.IGNORECASE),
-    re.compile(r'(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\s+(.+?)\s+\(([\d,]+\.\d{1,2})\)$',
-               re.IGNORECASE),
-]
+# Leading date on a statement line: numeric (05/08/2026), day-month-year
+# (05 Aug 2026 / 05-Aug-26), or month-first (August 05, 2026).
+_TEXT_LINE_RE = re.compile(
+    r'^(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}'
+    r'|\d{1,2}[\s-]\w{3,9}[\s-]\d{2,4}'
+    r'|\w{3,9}\s+\d{1,2},\s*\d{4})\s+(.*)$', re.IGNORECASE)
+
+# A trailing money token, optionally followed by a Dr/Cr marker. The number must
+# carry a decimal part or thousands separators — accepting bare integers here
+# would swallow cheque and reference numbers sitting at the end of a narration.
+_TRAILING_AMOUNT_RE = re.compile(
+    r'(\(?(?:\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?|\d+\.\d{1,2})\)?)'
+    r'\s*(DR|CR|DBT|CRT|D|C)?\s*$', re.IGNORECASE)
+
+
+def _split_trailing_amounts(text):
+    """Strip trailing money tokens off a line.
+
+    Returns (description, [amounts_left_to_right], type_hint).
+    A statement line ends either with just the amount, or with
+    "amount  running-balance" — the caller decides which.
+    """
+    desc = text.strip()
+    amounts = []
+    type_hint = None
+
+    while True:
+        m = _TRAILING_AMOUNT_RE.search(desc)
+        if not m or m.start() == 0:
+            break
+        token, marker = m.group(1), m.group(2)
+        signed = _clean_amount(token)
+        if signed == 0:
+            break
+        if marker:
+            k = marker.lower()
+            if type_hint is None:
+                type_hint = "credit" if k.startswith("c") else "debit"
+        elif signed < 0 and type_hint is None:
+            type_hint = "credit"
+        amounts.insert(0, abs(signed))
+        desc = desc[:m.start()].rstrip()
+        if len(amounts) >= 3:
+            break
+
+    return desc, amounts, type_hint
 
 
 def _parse_text_fallback(pdf):
-    """Extract transactions from raw text using regex (when everything else fails)."""
+    """Extract transactions from raw text (when both structured engines fail)."""
     transactions = []
     errors = []
+    prev_balance = None
 
     for page in pdf.pages:
         text = page.extract_text() or ""
@@ -935,24 +1032,40 @@ def _parse_text_fallback(pdf):
             line = line.strip()
             if not line or _is_summary_row(line) or _is_noise_line(line):
                 continue
-            for pattern in TEXT_PATTERNS:
-                m = pattern.search(line)
-                if not m:
-                    continue
-                parsed_date = _parse_date(m.group(1))
-                if not parsed_date:
-                    continue
-                desc = m.group(2).strip()
-                if _is_summary_row(desc):
-                    continue
-                signed = _clean_amount(m.group(3))
-                if signed == 0:
-                    continue
-                txn_type = "credit" if signed < 0 else "debit"
-                if signed > 0 and _looks_like_credit(desc):
-                    txn_type = "credit"
-                transactions.append(_new_txn(parsed_date, desc, abs(signed), txn_type))
-                break
+
+            m = _TEXT_LINE_RE.match(line)
+            if not m:
+                continue
+            parsed_date = _parse_date(m.group(1))
+            if not parsed_date:
+                continue
+
+            desc, amounts, type_hint = _split_trailing_amounts(m.group(2))
+            if not amounts or _is_summary_row(desc):
+                continue
+
+            # One trailing number is the transaction amount. Two or more means
+            # the last one is the running balance — taking it as the amount was
+            # the old behaviour and produced wildly wrong figures on any
+            # statement that prints a balance column.
+            if len(amounts) == 1:
+                amount, balance = amounts[0], None
+            else:
+                amount, balance = amounts[0], amounts[-1]
+
+            txn_type = type_hint or ("credit" if _looks_like_credit(desc) else "debit")
+
+            # The running balance is authoritative for direction when present.
+            if balance is not None and prev_balance is not None:
+                diff = round(balance - prev_balance, 2)
+                if abs(abs(diff) - amount) <= 0.02 and abs(diff) > 0:
+                    txn_type = "credit" if diff > 0 else "debit"
+            if balance is not None:
+                prev_balance = balance
+
+            if amount <= 0:
+                continue
+            transactions.append(_new_txn(parsed_date, desc or line[:60], amount, txn_type))
 
     return transactions, errors
 
